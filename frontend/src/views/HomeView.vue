@@ -4,6 +4,7 @@
       <h1>Welcome to SyntaxError Sports</h1>
       <p>Discover and manage exciting sports events around you</p>
       <router-link to="/events" class="btn btn-primary">Explore Events</router-link>
+    <router-link to="/login" class="btn btn-outline">Login</router-link>
     </section>
     <section class="features">
       <div class="feature-card">
@@ -11,8 +12,7 @@
         <p>Find sports events happening near you with detailed information</p>
       </div>
       <div class="feature-card">
-        <h2>📞 Register</h2>
-        <p>Quick and easy registration for events you're interested in</p>
+<router-link to="/register" class="register-link"><h2>📝 Register</h2></router-link>        <p>Quick and easy registration for events you're interested in</p>
       </div>
       <div class="feature-card">
         <h2>💬 Chat Support</h2>
