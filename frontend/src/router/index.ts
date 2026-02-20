@@ -16,7 +16,7 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/events/:id',
     name: 'EventDetail',
-    component: () => import('../views/EventDetailView.vue'),
+    component: () => import('../views/EventDetail.vue'),
   },
   {
     path: '/profile',
