@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
 import EventsView from '../views/EventsView.vue';
-import Login from '../views/Login.vue'
-import Register from '../views/Register.vue'
+import Login from '../views/Login.vue/Login.vue'
+import Register from '../views/Register.vue/Register.vue'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -18,7 +18,7 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/events/:id',
     name: 'EventDetail',
-    component: () => import('../views/EventDetail.vue'),
+    component: () => import('../views/EventDetail.vue/EventDetail.vue'),
   },
     {
     path: '/login',
