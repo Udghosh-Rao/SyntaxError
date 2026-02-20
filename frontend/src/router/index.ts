@@ -18,12 +18,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'EventDetail',
     component: () => import('../views/EventDetail.vue'),
   },
-  {
-    path: '/profile',
-    name: 'Profile',
-    component: () => import('../views/ProfileView.vue'),
-  },
-];
+  
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
