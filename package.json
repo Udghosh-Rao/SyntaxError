@@ -1,0 +1,8 @@
+{
+  "name": "syntax-error",
+  "version": "1.0.0",
+  "description": "Sports Event Management Platform",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build"
+  }
+}
