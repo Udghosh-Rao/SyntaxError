@@ -18,6 +18,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'EventDetail',
     component: () => import('../views/EventDetail.vue'),
   },
+  ];
   
 
 const router = createRouter({
