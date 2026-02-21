@@ -1,35 +1,48 @@
+"""
+Application factory for Sports Event Management MVP.
+"""
 from flask import Flask
-from app.extensions import db, jwt, cors, migrate, jwt
-from app.api import auth, events, registrations, payments, chatbot, organizer, admin
+from .config import DevelopmentConfig, ProductionConfig
+from .extensions import db, jwt, cors, migrate
+import os
 
-def create_app(config=None):
+
+def create_app(config_name=None):
     app = Flask(__name__)
-    
-    if config:
-        app.config.from_object(config)
+
+    # Load config
+    env = config_name or os.getenv('FLASK_ENV', 'development')
+    if env == 'production':
+        app.config.from_object(ProductionConfig)
     else:
-        from app.config import DevelopmentConfig
         app.config.from_object(DevelopmentConfig)
-    
+
     # Initialize extensions
     db.init_app(app)
     jwt.init_app(app)
     cors.init_app(app, resources={r"/api/*": {"origins": "*"}})
     migrate.init_app(app, db)
-jwt.init_app(app)
-    
+
     # Register blueprints
-    from app.api.auth import auth_bp
-    from app.api.events import events_bp
-    from app.api.registrations import reg_bp
-    from app.api.payments import pay_bp
-    from app.api.chatbot import chat_bp
-    from app.api.organizer import org_bp
-    from app.api.admin import admin_bp
-from app.api.auth import auth_bp
-from app.api.admin import admin_bp
-    
-    for bp in [auth_bp, events_bp, reg_bp, pay_bp, chat_bp, org_bp, , auth_bp, admin_bpadmin_bp]:
-        app.register_blueprint(bp, url_prefix='/api')
-    
+    from .api.auth import auth_bp
+    from .api.events import events_bp
+    from .api.registrations import registrations_bp
+    from .api.payments import payments_bp
+    from .api.chatbot import chatbot_bp
+    from .api.organizer import organizer_bp
+    from .api.admin import admin_bp
+
+    app.register_blueprint(auth_bp, url_prefix='/api')
+    app.register_blueprint(events_bp, url_prefix='/api')
+    app.register_blueprint(registrations_bp, url_prefix='/api')
+    app.register_blueprint(payments_bp, url_prefix='/api')
+    app.register_blueprint(chatbot_bp, url_prefix='/api')
+    app.register_blueprint(organizer_bp, url_prefix='/api')
+    app.register_blueprint(admin_bp, url_prefix='/api')
+
+    # Health check
+    @app.route('/api/health')
+    def health():
+        return {'status': 'ok', 'message': 'Sports Event Management API is running'}, 200
+
     return app

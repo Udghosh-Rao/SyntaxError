@@ -1,276 +1,196 @@
 <template>
-  <div class="admin-dashboard">
-    <h1>Admin Dashboard</h1>
-    <div class="admin-container">
-      <div class="controls">
-        <input v-model="searchQuery" type="text" placeholder="Search users or events..." class="search-input">
-        <select v-model="filterType" class="filter-select">
-          <option value="all">All</option>
-          <option value="users">Users</option>
-          <option value="events">Events</option>
-          <option value="payments">Payments</option>
-        </select>
+  <div class="min-h-screen bg-gray-50">
+    <header class="sticky top-0 z-40 border-b border-gray-100 bg-white/90 backdrop-blur-sm">
+      <div class="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
+        <span class="font-bold text-sm text-gray-900">SportsSync <span class="text-gray-400 font-normal">· Admin</span></span>
+        <button @click="handleLogout" class="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition">Logout</button>
       </div>
-      <div class="stats-grid">
-        <div class="stat-box">
-          <h3>Total Users</h3>
-          <p class="stat-value">{{ totalUsers }}</p>
-        </div>
-        <div class="stat-box">
-          <h3>Total Events</h3>
-          <p class="stat-value">{{ totalEvents }}</p>
-        </div>
-        <div class="stat-box">
-          <h3>Total Revenue</h3>
-          <p class="stat-value">₹{{ totalRevenue }}</p>
-        </div>
-        <div class="stat-box">
-          <h3>Pending Approvals</h3>
-          <p class="stat-value">{{ pendingApprovals }}</p>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-6 py-8">
+      <h1 class="text-xl font-bold text-gray-900 mb-1">Admin Dashboard</h1>
+      <p class="text-sm text-gray-500 mb-6">Platform-wide analytics and management.</p>
+
+      <!-- Tabs -->
+      <div class="flex gap-1 bg-gray-100 rounded-xl p-1 mb-8 overflow-x-auto">
+        <button
+          v-for="tab in tabs" :key="tab.id"
+          @click="activeTab = tab.id"
+          class="flex-1 min-w-max px-3 py-2 rounded-lg text-xs font-medium transition whitespace-nowrap"
+          :class="activeTab === tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+        >{{ tab.icon }} {{ tab.label }}</button>
+      </div>
+
+      <!-- Overview (Feature 13) -->
+      <div v-if="activeTab === 'overview'">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="stat-card">
+            <div class="text-2xl font-bold text-gray-900">{{ analytics.total_users }}</div>
+            <div class="text-xs text-gray-400 mt-0.5">Total Users</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-2xl font-bold text-gray-900">{{ analytics.total_events }}</div>
+            <div class="text-xs text-gray-400 mt-0.5">Active Events</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-2xl font-bold text-gray-900">{{ analytics.total_registrations }}</div>
+            <div class="text-xs text-gray-400 mt-0.5">Registrations</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-2xl font-bold text-gray-900">₹{{ (analytics.total_revenue||0).toLocaleString('en-IN') }}</div>
+            <div class="text-xs text-gray-400 mt-0.5">Platform Revenue</div>
+          </div>
         </div>
       </div>
-      <div class="users-section">
-        <h2>User Management</h2>
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>User ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in filteredUsers" :key="user.id">
-              <td>{{ user.id }}</td>
-              <td>{{ user.name }}</td>
-              <td>{{ user.email }}</td>
-              <td><span class="badge" :class="user.role">{{ user.role }}</span></td>
-              <td><span class="badge" :class="user.status">{{ user.status }}</span></td>
-              <td>
-                <button @click="viewUserDetails(user)" class="btn-small">View</button>
-                <button @click="deactivateUser(user.id)" class="btn-small btn-danger">Deactivate</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+
+      <!-- Popular Sports (Feature 14) -->
+      <div v-if="activeTab === 'sports'">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-card p-6">
+          <h2 class="text-sm font-semibold text-gray-900 mb-5">Sports by Registrations</h2>
+          <div v-if="popularSports.length" style="height:280px;"><BarChart :data="sportsChartData" /></div>
+          <p v-else class="text-sm text-gray-400">No data yet.</p>
+        </div>
       </div>
-      <div class="payments-section">
-        <h2>Payment Transactions</h2>
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Transaction ID</th>
-              <th>User</th>
-              <th>Event</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="payment in payments" :key="payment.id">
-              <td>{{ payment.id }}</td>
-              <td>{{ payment.userId }}</td>
-              <td>{{ payment.eventId }}</td>
-              <td>₹{{ payment.amount }}</td>
-              <td><span class="badge" :class="payment.status">{{ payment.status }}</span></td>
-              <td>{{ formatDate(payment.date) }}</td>
-            </tr>
-          </tbody>
-        </table>
+
+      <!-- City Distribution (Feature 15) -->
+      <div v-if="activeTab === 'cities'">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-card p-6">
+          <h2 class="text-sm font-semibold text-gray-900 mb-5">Users by City</h2>
+          <div v-if="cityDist.length" style="height:280px;"><DoughnutChart :data="cityChartData" /></div>
+          <table class="min-w-full text-xs mt-6">
+            <thead class="border-b border-gray-100">
+              <tr><th class="text-left py-2 text-gray-500 font-medium">City</th><th class="text-left py-2 text-gray-500 font-medium">Users</th></tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              <tr v-for="c in cityDist" :key="c.city"><td class="py-2 text-gray-700">{{ c.city }}</td><td class="py-2 text-gray-900 font-medium">{{ c.user_count }}</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      <!-- Fill Rate (Feature 16) -->
+      <div v-if="activeTab === 'fillrate'">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+              <thead class="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th class="text-left px-4 py-3 text-gray-500 font-medium" v-for="h in ['Event','Organizer','Capacity','Filled','Rate','Status']" :key="h">{{ h }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50">
+                <tr v-for="e in fillRate" :key="e.event_id" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 font-medium text-gray-900">{{ e.title }}</td>
+                  <td class="px-4 py-3 text-gray-500">{{ e.organizer_name }}</td>
+                  <td class="px-4 py-3 text-gray-500">{{ e.capacity }}</td>
+                  <td class="px-4 py-3 text-gray-700">{{ e.seats_filled }}</td>
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                      <div class="w-16 h-1 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-gray-900 rounded-full" :style="`width:${e.fill_rate}%`"></div></div>
+                      {{ e.fill_rate }}%
+                    </div>
+                  </td>
+                  <td class="px-4 py-3">
+                    <span class="badge" :class="e.performance_label?.toLowerCase()==='hot'?'badge-green':e.performance_label?.toLowerCase()==='warm'?'badge-yellow':'badge-gray'">{{ e.performance_label }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monthly Trend (Feature 17) -->
+      <div v-if="activeTab === 'trend'">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-card p-6">
+          <h2 class="text-sm font-semibold text-gray-900 mb-5">Monthly Registrations (12 Months)</h2>
+          <div v-if="monthlyTrend.length" style="height:280px;"><BarChart :data="trendChartData" /></div>
+          <p v-else class="text-sm text-gray-400">No data yet.</p>
+        </div>
+      </div>
+
+      <!-- Organizer Performance (Feature 18) -->
+      <div v-if="activeTab === 'organizers'">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+              <thead class="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th class="text-left px-4 py-3 text-gray-500 font-medium" v-for="h in ['Organizer','Events','Registrations','Revenue']" :key="h">{{ h }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50">
+                <tr v-for="o in orgPerf" :key="o.organizer_id" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 font-medium text-gray-900">{{ o.organizer_name }}</td>
+                  <td class="px-4 py-3 text-gray-500">{{ o.total_events }}</td>
+                  <td class="px-4 py-3 text-gray-700">{{ o.total_registrations }}</td>
+                  <td class="px-4 py-3 font-semibold text-gray-900">₹{{ o.total_revenue.toLocaleString('en-IN') }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Escalations -->
+      <div v-if="activeTab === 'escalations'">
+        <div v-if="escalations.length" class="space-y-3">
+          <div v-for="t in escalations" :key="t.id"
+            class="bg-white rounded-xl border border-gray-100 shadow-card p-4 flex items-start justify-between gap-4">
+            <div>
+              <p class="text-xs font-semibold text-gray-900 mb-0.5">Ticket #{{ t.id }}</p>
+              <p class="text-xs text-gray-500 leading-relaxed">{{ t.query }}</p>
+              <p class="text-[10px] text-gray-400 mt-1.5">{{ t.created_at }}</p>
+            </div>
+            <button @click="resolveTicket(t.id)"
+              class="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition whitespace-nowrap">
+              Resolve
+            </button>
+          </div>
+        </div>
+        <div v-else class="py-16 text-center">
+          <p class="text-2xl mb-2">🎉</p>
+          <p class="text-sm font-medium text-gray-900">No open escalations</p>
+          <p class="text-xs text-gray-400 mt-1">All chatbot tickets have been resolved.</p>
+        </div>
+      </div>
+    </main>
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import api from '@/services/api'
+import BarChart from '@/components/BarChart.vue'
+import DoughnutChart from '@/components/DoughnutChart.vue'
 
-const router = useRouter();
-const authStore = useAuthStore();
-const searchQuery = ref('');
-const filterType = ref('all');
-const users = ref<any[]>([]);
-const payments = ref<any[]>([]);
+const router = useRouter(); const authStore = useAuthStore()
+const tabs = [
+  {id:'overview',icon:'📊',label:'Overview'},{id:'sports',icon:'🏆',label:'Popular Sports'},
+  {id:'cities',icon:'🗺',label:'Cities'},{id:'fillrate',icon:'📋',label:'Fill Rates'},
+  {id:'trend',icon:'📅',label:'Monthly Trend'},{id:'organizers',icon:'🏢',label:'Organizers'},
+  {id:'escalations',icon:'💬',label:'Escalations'},
+]
+const activeTab = ref('overview')
+const analytics = ref({total_users:0,total_events:0,total_registrations:0,total_revenue:0})
+const popularSports = ref([]);const cityDist = ref([]);const fillRate = ref([])
+const monthlyTrend = ref([]);const orgPerf = ref([]);const escalations = ref([])
 
-const totalUsers = computed(() => users.value.length);
-const totalEvents = computed(() => 0);
-const totalRevenue = computed(() => payments.value.reduce((sum, p) => sum + p.amount, 0));
-const pendingApprovals = computed(() => users.value.filter(u => u.status === 'pending').length);
+const COLORS = ['#22c55e','#f59e0b','#3b82f6','#ef4444','#8b5cf6','#6366f1','#06b6d4','#f97316']
+const sportsChartData = computed(()=>({labels:popularSports.value.map(d=>d.sport_category),datasets:[{label:'Registrations',data:popularSports.value.map(d=>d.registration_count),backgroundColor:'#111827',borderRadius:4}]}))
+const cityChartData = computed(()=>({labels:cityDist.value.map(d=>d.city),datasets:[{data:cityDist.value.map(d=>d.user_count),backgroundColor:COLORS}]}))
+const trendChartData = computed(()=>({labels:monthlyTrend.value.map(d=>d.month),datasets:[{label:'Registrations',data:monthlyTrend.value.map(d=>d.count),backgroundColor:'#111827',borderRadius:4}]}))
 
-const filteredUsers = computed(() => {
-  return users.value.filter(u => 
-    u.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
-});
+async function resolveTicket(id){ await api.put(`/admin/escalations/${id}/resolve`); escalations.value=escalations.value.filter(t=>t.id!==id) }
+function handleLogout(){ authStore.logout(); router.push('/') }
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString();
-};
-
-const viewUserDetails = (user: any) => {
-  console.log('View user:', user);
-};
-
-const deactivateUser = async (userId: string) => {
-  if (confirm('Are you sure you want to deactivate this user?')) {
-    try {
-      const index = users.value.findIndex(u => u.id === userId);
-      if (index > -1) {
-        users.value[index].status = 'deactivated';
-      }
-    } catch (error) {
-      console.error('Failed to deactivate user:', error);
-    }
-  }
-};
-
-onMounted(() => {
-  if (!authStore.isAuthenticated || authStore.currentUser?.role !== 'admin') {
-    router.push({ name: 'Home' });
-  }
-});
+onMounted(async()=>{
+  const [a,s,c,f,m,o,e]=await Promise.all([
+    api.get('/admin/analytics'),api.get('/admin/popular-sport'),api.get('/admin/city-distribution'),
+    api.get('/admin/fill-rate'),api.get('/admin/monthly-trend'),api.get('/admin/organizer-performance'),api.get('/admin/escalations')
+  ])
+  analytics.value=a.data;popularSports.value=s.data;cityDist.value=c.data;fillRate.value=f.data;monthlyTrend.value=m.data;orgPerf.value=o.data;escalations.value=e.data
+})
 </script>
-
-<style scoped>
-.admin-dashboard {
-  padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.admin-container {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.controls {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.search-input,
-.filter-select {
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-.search-input {
-  flex: 1;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.stat-box {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.stat-value {
-  font-size: 2rem;
-  font-weight: bold;
-  margin: 0.5rem 0 0 0;
-}
-
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.admin-table th {
-  background: #f5f5f5;
-  padding: 1rem;
-  text-align: left;
-  font-weight: bold;
-  border-bottom: 2px solid #ddd;
-}
-
-.admin-table td {
-  padding: 1rem;
-  border-bottom: 1px solid #eee;
-}
-
-.badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.875rem;
-  font-weight: bold;
-}
-
-.badge.admin {
-  background: #e3f2fd;
-  color: #1976d2;
-}
-
-.badge.organizer {
-  background: #f3e5f5;
-  color: #7b1fa2;
-}
-
-.badge.user {
-  background: #e8f5e9;
-  color: #388e3c;
-}
-
-.badge.active {
-  background: #c8e6c9;
-  color: #2e7d32;
-}
-
-.badge.pending {
-  background: #fff3e0;
-  color: #e65100;
-}
-
-.badge.completed,
-.badge.success {
-  background: #c8e6c9;
-  color: #2e7d32;
-}
-
-.badge.failed,
-.badge.cancelled {
-  background: #ffcdd2;
-  color: #c62828;
-}
-
-.btn-small {
-  padding: 0.4rem 0.8rem;
-  margin-right: 0.5rem;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
-}
-
-.btn-small.btn-danger {
-  background: #dc3545;
-}
-
-.btn-small:hover {
-  opacity: 0.8;
-}
-</style>

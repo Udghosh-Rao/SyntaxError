@@ -1,133 +1,169 @@
 <template>
-  <div class="event-detail">
-    <button @click="goBack" class="back-btn">← Back</button>
-    <div v-if="event" class="detail-container">
-      <h1>{{ event.title }}</h1>
-      <img :src="event.image" :alt="event.title" class="event-image">
-      <div class="detail-info">
-        <p><strong>Date:</strong> {{ formatDate(event.date) }}</p>
-        <p><strong>Location:</strong> {{ event.location }}</p>
-        <p><strong>Organizer:</strong> {{ event.organizer.name }}</p>
-        <p><strong>Description:</strong> {{ event.description }}</p>
-        <p><strong>Attendees:</strong> {{ event.attendees.length }} / {{ event.capacity }}</p>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Topbar -->
+    <header class="sticky top-0 z-40 border-b border-gray-100 bg-white/90 backdrop-blur-sm">
+      <div class="mx-auto max-w-6xl px-6 h-14 flex items-center gap-4">
+        <router-link to="/home" class="text-gray-400 hover:text-gray-600 text-sm transition">← Back</router-link>
+        <span class="font-bold text-sm text-gray-900">SportsSync</span>
       </div>
-      <button v-if="!isAttending" @click="registerForEvent" class="register-btn">Register</button>
-      <button v-else @click="unregister" class="unregister-btn">Unregister</button>
-      <EventDetail :event="event" />
+    </header>
+
+    <!-- Loading -->
+    <div v-if="!event" class="flex justify-center py-24">
+      <div class="w-8 h-8 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin"></div>
     </div>
-    <div v-else class="loading">Loading event details...</div>
+
+    <main v-if="event" class="mx-auto max-w-6xl px-6 py-8">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Main -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- Header card -->
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-card p-6">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="badge badge-blue">{{ event.sport_category }}</span>
+              <span v-if="event.price_tier" class="badge" :class="tierBadge">{{ event.price_tier }}</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">{{ event.title }}</h1>
+          </div>
+
+          <!-- Details -->
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-card p-6">
+            <h2 class="text-sm font-semibold text-gray-900 mb-4">Event Details</h2>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div v-for="d in details" :key="d.label" class="flex items-start gap-3">
+                <span class="text-base mt-0.5">{{ d.icon }}</span>
+                <div>
+                  <dt class="text-xs text-gray-400">{{ d.label }}</dt>
+                  <dd class="text-sm font-medium text-gray-900 mt-0.5">{{ d.value }}</dd>
+                </div>
+              </div>
+            </dl>
+          </div>
+
+          <!-- Description -->
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-card p-6">
+            <h2 class="text-sm font-semibold text-gray-900 mb-3">About This Event</h2>
+            <p class="text-sm text-gray-600 leading-relaxed">{{ event.description || 'No description provided.' }}</p>
+            <div v-if="event.tags?.length" class="flex flex-wrap gap-2 mt-4">
+              <span v-for="tag in event.tags" :key="tag"
+                class="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">{{ tag }}</span>
+            </div>
+          </div>
+
+          <!-- Similar events -->
+          <div v-if="similarEvents.length">
+            <h2 class="text-sm font-semibold text-gray-900 mb-4">Similar Events</h2>
+            <div class="snap-row">
+              <EventCard v-for="e in similarEvents" :key="e.id" :event="e" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Registration sidebar -->
+        <div class="lg:col-span-1">
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-card p-6 sticky top-20">
+            <div class="text-3xl font-bold text-gray-900 mb-1">₹{{ Number(event.price).toLocaleString('en-IN') }}</div>
+            <p class="text-xs text-gray-400 mb-5">per person</p>
+
+            <!-- Fill rate -->
+            <div class="mb-5">
+              <div class="flex justify-between text-xs text-gray-500 mb-1.5">
+                <span>{{ event.seats_sold }}/{{ event.capacity }} registered</span>
+                <span>{{ event.fill_rate }}% full</span>
+              </div>
+              <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full bg-gray-900 rounded-full transition-all" :style="`width:${event.fill_rate}%`"></div>
+              </div>
+            </div>
+
+            <div v-if="!isRegistered">
+              <button
+                v-if="event.seats_remaining > 0"
+                @click="handleRegisterAndPay"
+                :disabled="paymentLoading"
+                class="w-full py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 disabled:opacity-50 transition shadow-btn"
+              >
+                {{ paymentLoading ? 'Processing…' : 'Register & Pay' }}
+              </button>
+              <div v-else class="text-center text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl py-2.5 px-4">
+                Fully booked
+              </div>
+            </div>
+            <div v-else class="text-center text-sm text-green-700 bg-green-50 border border-green-100 rounded-xl py-2.5 px-4 font-medium">
+              ✓ You're registered
+            </div>
+
+            <div v-if="paymentError" class="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{{ paymentError }}</div>
+            <div v-if="paymentSuccess" class="mt-3 text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2">{{ paymentSuccess }}</div>
+
+            <div class="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-400 text-center">
+              Secure payments via Razorpay
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useEventsStore } from '@/stores/events';
-import { useAuthStore } from '@/stores/auth';
-import EventDetail from '@/components/EventDetail.vue';
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useEventsStore } from '@/stores/events'
+import EventCard from '@/components/EventCard.vue'
+import api from '@/services/api'
 
-const route = useRoute();
-const router = useRouter();
-const eventsStore = useEventsStore();
-const authStore = useAuthStore();
+const route = useRoute()
+const eventsStore = useEventsStore()
+const event = ref(null)
+const similarEvents = ref([])
+const isRegistered = ref(false)
+const paymentLoading = ref(false)
+const paymentError = ref('')
+const paymentSuccess = ref('')
 
-const eventId = route.params.id as string;
-const event = ref<any>(null);
-const isAttending = computed(() => {
-  if (!event.value) return false;
-  return event.value.attendees.some((a: any) => a.id === authStore.currentUser?.id);
-});
+const tierBadge = computed(() => {
+  const t = event.value?.price_tier?.toLowerCase()
+  if (t === 'premium') return 'badge-green'
+  if (t === 'mid') return 'badge-yellow'
+  return 'badge-gray'
+})
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString();
-};
+const details = computed(() => event.value ? [
+  { icon: '📅', label: 'Date & Time', value: new Date(event.value.event_date).toLocaleString('en-IN', { dateStyle: 'full', timeStyle: 'short' }) },
+  { icon: '📍', label: 'City', value: event.value.venue_city },
+  { icon: '🏟️', label: 'Venue', value: event.value.venue_address || 'TBA' },
+  { icon: '👤', label: 'Organizer', value: event.value.organizer_name || '—' },
+  { icon: '🎟️', label: 'Seats Left', value: `${event.value.seats_remaining} of ${event.value.capacity}` },
+] : [])
 
-const goBack = () => router.back();
-
-const registerForEvent = async () => {
+async function handleRegisterAndPay() {
+  paymentLoading.value = true; paymentError.value = ''; paymentSuccess.value = ''
   try {
-    await eventsStore.registerForEvent(eventId);
-    await loadEventDetails();
-  } catch (error) {
-    console.error('Registration failed:', error);
-  }
-};
+    const res = await api.post('/payments/create-order', { event_id: event.value.id })
+    const { order_id, amount, currency, key_id } = res.data
+    const options = {
+      key: key_id, amount, currency, name: 'SportsSync', description: event.value.title, order_id,
+      handler: async (response) => {
+        try {
+          await api.post('/payments/verify', { razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature })
+          isRegistered.value = true; paymentSuccess.value = 'Payment successful! Your registration is confirmed.'
+        } catch { paymentError.value = 'Payment verification failed. Please contact support.' }
+      },
+      theme: { color: '#111827' },
+    }
+    new window.Razorpay(options).open()
+  } catch (e) { paymentError.value = e.response?.data?.error || 'Failed to initiate payment.' }
+  finally { paymentLoading.value = false }
+}
 
-const unregister = async () => {
+onMounted(async () => {
+  const id = route.params.id
   try {
-    await eventsStore.unregisterFromEvent(eventId);
-    await loadEventDetails();
-  } catch (error) {
-    console.error('Unregister failed:', error);
-  }
-};
-
-const loadEventDetails = async () => {
-  event.value = eventsStore.getEventById(eventId);
-};
-
-onMounted(() => {
-  loadEventDetails();
-});
+    event.value = await eventsStore.fetchEventById(id)
+    similarEvents.value = await eventsStore.fetchSimilarEvents(id)
+    const myRegs = await api.get('/registrations/my')
+    isRegistered.value = myRegs.data.some(r => r.event_id == id && r.status === 'confirmed')
+  } catch (e) { console.error(e) }
+})
 </script>
-
-<style scoped>
-.event-detail {
-  padding: 2rem;
-}
-
-.back-btn {
-  padding: 0.5rem 1rem;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-bottom: 1rem;
-}
-
-.detail-container {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.event-image {
-  width: 100%;
-  height: 400px;
-  object-fit: cover;
-  border-radius: 8px;
-  margin: 1rem 0;
-}
-
-.detail-info {
-  background: #f5f5f5;
-  padding: 1rem;
-  border-radius: 8px;
-  margin: 1rem 0;
-}
-
-.register-btn,
-.unregister-btn {
-  padding: 0.75rem 1.5rem;
-  margin-right: 1rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.register-btn {
-  background: #28a745;
-  color: white;
-}
-
-.unregister-btn {
-  background: #dc3545;
-  color: white;
-}
-
-.loading {
-  text-align: center;
-  padding: 2rem;
-}
-</style>

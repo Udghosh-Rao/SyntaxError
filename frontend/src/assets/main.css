@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@layer base {
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    @apply text-gray-900 bg-gray-50;
+  }
+
+  body {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    @apply antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  a {
+    @apply no-underline;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+}
+
+@layer components {
+
+  /* ── Inputs ─────────────────────────────────────────── */
+  .input {
+    @apply w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100;
+  }
+
+  /* ── Badges ────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-green {
+    @apply badge bg-green-50 text-green-700 ring-1 ring-green-200;
+  }
+
+  .badge-yellow {
+    @apply badge bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200;
+  }
+
+  .badge-red {
+    @apply badge bg-red-50 text-red-700 ring-1 ring-red-200;
+  }
+
+  .badge-blue {
+    @apply badge bg-blue-50 text-blue-700 ring-1 ring-blue-200;
+  }
+
+  .badge-gray {
+    @apply badge bg-gray-100 text-gray-600 ring-1 ring-gray-200;
+  }
+
+  /* ── Stat card ─────────────────────────────────────── */
+  .stat-card {
+    @apply bg-white rounded-xl border border-gray-100 p-5 shadow-card;
+  }
+}
+
+@layer utilities {
+  .scroll-hidden::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scroll-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* horizontal scroll row */
+  .snap-row {
+    @apply flex gap-4 overflow-x-auto pb-2 scroll-hidden;
+    scroll-snap-type: x mandatory;
+  }
+
+  .snap-row>* {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+}

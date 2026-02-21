@@ -1,192 +1,59 @@
 <template>
-  <div class="event-card">
-    <div class="card-image">
-      <img :src="event.image" :alt="event.title" class="event-image" />
-      <div class="card-badge">{{ event.sport }}</div>
-    </div>
-    
-    <div class="card-content">
-      <h3 class="event-title">{{ event.title }}</h3>
-      
-      <div class="event-info">
-        <div class="info-item">
-          <span class="icon">📅</span>
-          <span>{{ formatDate(event.date) }}</span>
+  <router-link :to="`/event/${event.id}`" class="block w-64 flex-shrink-0 group">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-card group-hover:shadow-card-hover group-hover:-translate-y-0.5 transition-all overflow-hidden">
+      <!-- Top color stripe -->
+      <div class="h-1.5 w-full" :style="`background:${sportColor}`"></div>
+
+      <div class="p-4">
+        <div class="flex items-start justify-between gap-2 mb-3">
+          <span class="badge badge-gray text-xs">{{ event.sport_category }}</span>
+          <span class="text-xs font-bold text-gray-900">₹{{ Number(event.price).toLocaleString('en-IN') }}</span>
         </div>
-        <div class="info-item">
-          <span class="icon">📍</span>
-          <span>{{ event.location }}</span>
+
+        <h3 class="text-sm font-semibold text-gray-900 leading-snug mb-3 line-clamp-2">{{ event.title }}</h3>
+
+        <div class="space-y-1.5 mb-4">
+          <div class="flex items-center gap-1.5 text-xs text-gray-500">
+            <span>📅</span> <span>{{ formatDate(event.event_date) }}</span>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs text-gray-500">
+            <span>📍</span> <span>{{ event.venue_city }}</span>
+          </div>
         </div>
-        <div class="info-item">
-          <span class="icon">👥</span>
-          <span>{{ event.registrations }} registered</span>
+
+        <!-- Fill bar -->
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all" :style="`width:${event.fill_rate || 0}%; background:${sportColor}`"></div>
+          </div>
+          <span :class="seatsClass" class="text-xs font-medium whitespace-nowrap">{{ event.seats_remaining }} left</span>
         </div>
       </div>
-      
-      <p class="event-description">{{ event.description }}</p>
-      
-      <div class="card-footer">
-        <div class="price-info">
-          <span class="label">Entry Fee:</span>
-          <span class="price">${{ event.entryFee }}</span>
-        </div>
-        <router-link :to="`/events/${event.id}`" class="btn-details">
-          View Details
-        </router-link>
-      </div>
     </div>
-  </div>
+  </router-link>
 </template>
 
-<script setup lang="ts">
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  location: string;
-  sport: string;
-  image: string;
-  entryFee: number;
-  registrations: number;
+<script setup>
+import { computed } from 'vue'
+
+const props = defineProps({ event: { type: Object, required: true } })
+
+const SPORT_COLORS = {
+  football: '#22c55e', cricket: '#f59e0b', tennis: '#3b82f6',
+  basketball: '#ef4444', running: '#8b5cf6', badminton: '#6366f1',
+  swimming: '#06b6d4', cycling: '#f97316',
 }
 
-defineProps<{
-  event: Event;
-}>();
+const sportColor = computed(() => SPORT_COLORS[props.event.sport_category?.toLowerCase()] || '#6b7280')
 
-const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'short', 
-    day: 'numeric' 
-  });
-};
+const seatsClass = computed(() => {
+  const r = props.event.seats_remaining
+  if (r <= 0) return 'text-red-500'
+  if (r <= 10) return 'text-yellow-600'
+  return 'text-gray-400'
+})
+
+function formatDate(d) {
+  return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+}
 </script>
-
-<style scoped>
-.event-card {
-  border-radius: 0.5rem;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  transition: all 0.3s ease;
-  background: white;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.event-card:hover {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  transform: translateY(-4px);
-}
-
-.card-image {
-  position: relative;
-  height: 200px;
-  overflow: hidden;
-  background: #f0f0f0;
-}
-
-.event-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.card-badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: #3b82f6;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.card-content {
-  padding: 1.5rem;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.event-title {
-  font-size: 1.25rem;
-  font-weight: bold;
-  margin: 0 0 1rem 0;
-  color: #1f2937;
-}
-
-.event-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.icon {
-  font-size: 1rem;
-}
-
-.event-description {
-  color: #6b7280;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  margin: 0 0 1rem 0;
-  flex: 1;
-}
-
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px solid #f0f0f0;
-  padding-top: 1rem;
-  margin-top: auto;
-}
-
-.price-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.label {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  text-transform: uppercase;
-}
-
-.price {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #3b82f6;
-}
-
-.btn-details {
-  background: #3b82f6;
-  color: white;
-  padding: 0.5rem 1.5rem;
-  border-radius: 0.375rem;
-  text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition: background 0.3s;
-}
-
-.btn-details:hover {
-  background: #2563eb;
-}
-</style>

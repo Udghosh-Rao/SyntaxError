@@ -1,0 +1,48 @@
+# Environment & Secrets
+.env
+*.env.local
+*.env.production
+*.env.staging
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.venv/
+instance/
+*.egg-info/
+dist/
+build/
+*.so
+.pytest_cache/
+*.db
+*.sqlite
+*.sqlite3
+migrations/versions/
+
+# Node / Vue
+node_modules/
+frontend/dist/
+frontend/.vite/
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.gitkeep
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# FAISS / ML artifacts
+faiss_index/
+*.index
+*.faiss
