@@ -1,0 +1,1 @@
+{"name":"syntax-error","version":"1.0.0","description":"Sports Event Management Platform","scripts":{"build":"npm --prefix frontend install && npm --prefix frontend run build"},"engines":{"node":"18.x"}}

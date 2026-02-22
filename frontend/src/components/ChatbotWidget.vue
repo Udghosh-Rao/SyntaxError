@@ -1,111 +1,244 @@
 <template>
-  <div>
-    <!-- FAB -->
-    <button
-      @click="store.toggleChat"
-      class="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-gray-900 text-white shadow-lg hover:bg-gray-800 transition flex items-center justify-center text-lg"
-      :title="store.isOpen ? 'Close' : 'AI Assistant'"
+  <div class="chatbot-widget">
+    <!-- Chat Button -->
+    <button 
+      v-if="!isOpen" 
+      class="chat-toggle-btn animate-corp"
+      @click="isOpen = true"
     >
-      <span v-if="!store.isOpen">💬</span>
-      <span v-else class="text-base">✕</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+      Support Interface
     </button>
 
-    <!-- Chat window -->
-    <transition
-      enter-active-class="transition ease-out duration-200"
-      enter-from-class="opacity-0 translate-y-4 scale-95"
-      enter-to-class="opacity-100 translate-y-0 scale-100"
-      leave-active-class="transition ease-in duration-150"
-      leave-from-class="opacity-100 translate-y-0 scale-100"
-      leave-to-class="opacity-0 translate-y-4 scale-95"
-    >
-      <div v-if="store.isOpen"
-        class="fixed bottom-22 right-6 z-50 w-80 bg-white border border-gray-100 rounded-2xl shadow-card-hover flex flex-col overflow-hidden"
-        style="height:440px; bottom:88px;"
-      >
-        <!-- Header -->
-        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center text-sm">🤖</div>
-            <div>
-              <p class="text-xs font-semibold text-gray-900">SportsSync AI</p>
-              <p class="text-xs text-gray-400">GPT-4o-mini · RAG</p>
-            </div>
-          </div>
-          <button @click="store.toggleChat" class="text-gray-400 hover:text-gray-600 text-lg leading-none transition">×</button>
+    <!-- Chat Window -->
+    <div v-else class="chat-window card-premium animate-corp">
+      <div class="chat-header-corp">
+        <div class="header-main">
+          <span class="badge-corp text-xs">AI Core</span>
+          <h4 class="font-800 mt-2">Support Terminal</h4>
         </div>
+        <button class="close-btn-corp" @click="isOpen = false">&times;</button>
+      </div>
 
-        <!-- Messages -->
-        <div class="flex-1 overflow-y-auto p-4 space-y-3" ref="messagesEl">
-          <div v-if="!store.messages.length" class="flex justify-start">
-            <div class="bg-gray-100 text-gray-700 text-xs rounded-2xl rounded-tl-sm px-3 py-2 max-w-[80%] leading-relaxed">
-              Hi! I can help with events, payments, and registrations. What do you need?
-            </div>
-          </div>
-
-          <div
-            v-for="(msg, i) in store.messages" :key="i"
-            class="flex"
-            :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
-          >
-            <div
-              class="text-xs rounded-2xl px-3 py-2 max-w-[80%] leading-relaxed"
-              :class="msg.role === 'user'
-                ? 'bg-gray-900 text-white rounded-tr-sm'
-                : 'bg-gray-100 text-gray-700 rounded-tl-sm'"
-            >
-              {{ msg.text }}
-              <p v-if="msg.escalated" class="mt-1 text-yellow-600 text-[10px]">📋 Escalated to support team</p>
-            </div>
-          </div>
-
-          <!-- Typing indicator -->
-          <div v-if="store.loading" class="flex justify-start">
-            <div class="bg-gray-100 text-gray-400 rounded-2xl rounded-tl-sm px-4 py-2.5 flex gap-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce"></span>
-              <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style="animation-delay:.15s"></span>
-              <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style="animation-delay:.3s"></span>
-            </div>
+      <div class="chat-messages-corp" ref="messagesContainer">
+        <div 
+          v-for="(msg, index) in messages" 
+          :key="index"
+          :class="['message-corp', msg.role]"
+        >
+          <div class="msg-content">{{ msg.content }}</div>
+          <div v-if="msg.escalated" class="escalation-warning-corp">
+             PROTOCOL ALERT: Transferred to Human Operator
           </div>
         </div>
-
-        <!-- Input -->
-        <div class="p-3 border-t border-gray-100 flex gap-2">
-          <input
-            v-model="inputText"
-            @keydown.enter="sendMessage"
-            :disabled="store.loading"
-            class="flex-1 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs placeholder-gray-400 outline-none focus:ring-2 focus:ring-gray-200 transition"
-            placeholder="Type a message…"
-          />
-          <button
-            @click="sendMessage"
-            :disabled="!inputText.trim() || store.loading"
-            class="w-8 h-8 rounded-xl bg-gray-900 text-white text-xs disabled:opacity-40 hover:bg-gray-800 transition flex items-center justify-center"
-          >→</button>
+        <div v-if="loading" class="message-corp bot loading-indicator">
+          Synchronizing response...
         </div>
       </div>
-    </transition>
+
+      <div class="chat-input-area-corp input-stack">
+        <label class="label-muted mb-2">Query Prompt</label>
+        <div class="input-action-group">
+          <input 
+            v-model="inputMsg" 
+            @keyup.enter="sendMessage"
+            type="text" 
+            placeholder="Input operational inquiry..."
+            class="input-corp"
+            :disabled="loading"
+          />
+          <button @click="sendMessage" :disabled="!inputMsg.trim() || loading" class="btn-corp btn-corp-primary px-6">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
-<script setup>
-import { ref, watch, nextTick } from 'vue'
-import { useChatbotStore } from '@/stores/chatbot'
+<script setup lang="ts">
+import { ref, nextTick } from 'vue';
+import axios from 'axios';
+import { useAuthStore } from '../stores/auth';
 
-const store = useChatbotStore()
-const inputText = ref('')
-const messagesEl = ref(null)
+const authStore = useAuthStore();
+const isOpen = ref(false);
+const loading = ref(false);
+const inputMsg = ref('');
+const messagesContainer = ref<HTMLElement | null>(null);
 
-async function sendMessage() {
-  if (!inputText.value.trim() || store.loading) return
-  const t = inputText.value.trim(); inputText.value = ''
-  await store.sendMessage(t)
-  await nextTick()
-  if (messagesEl.value) messagesEl.value.scrollTop = messagesEl.value.scrollHeight
-}
-watch(() => store.messages.length, async () => {
-  await nextTick()
-  if (messagesEl.value) messagesEl.value.scrollTop = messagesEl.value.scrollHeight
-})
+type Message = {
+  role: 'user' | 'bot';
+  content: string;
+  escalated?: boolean;
+};
+
+const messages = ref<Message[]>([
+  { role: 'bot', content: 'Operational Support Ready. How can I assist with your deployments today?' }
+]);
+
+const scrollToBottom = async () => {
+  await nextTick();
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+  }
+};
+
+const sendMessage = async () => {
+  const txt = inputMsg.value.trim();
+  if (!txt) return;
+
+  messages.value.push({ role: 'user', content: txt });
+  inputMsg.value = '';
+  loading.value = true;
+  await scrollToBottom();
+
+  try {
+    const config = authStore.token 
+        ? { headers: { Authorization: `Bearer ${authStore.token}` } } 
+        : {};
+
+    const res = await axios.post(
+      'http://localhost:8000/api/chatbot',
+      { message: txt },
+      config
+    );
+
+    messages.value.push({ 
+      role: 'bot', 
+      content: res.data.response,
+      escalated: res.data.escalated
+    });
+  } catch (err) {
+    messages.value.push({ 
+      role: 'bot', 
+      content: 'Critical Error: Support Terminal unreachable.' 
+    });
+  } finally {
+    loading.value = false;
+    await scrollToBottom();
+  }
+};
 </script>
+
+<style scoped>
+.chatbot-widget {
+  position: fixed;
+  bottom: 3rem;
+  right: 3rem;
+  z-index: 1000;
+}
+
+.chat-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--brand-primary);
+  color: #000;
+  border: none;
+  padding: 1.25rem 2rem;
+  border-radius: var(--radius-pill);
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 10px 40px rgba(0, 240, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all 0.3s var(--ease-luxury);
+}
+
+.chat-toggle-btn:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 50px rgba(0, 240, 255, 0.6);
+  background: white;
+}
+
+.chat-window {
+  width: 400px;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.chat-header-corp {
+  padding: 2.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.close-btn-corp {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 2rem;
+  cursor: pointer;
+  line-height: 0.5;
+}
+
+.chat-messages-corp {
+  flex: 1;
+  padding: 2.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background: rgba(0,0,0,0.2);
+  scrollbar-width: none;
+}
+
+.chat-messages-corp::-webkit-scrollbar { display: none; }
+
+.message-corp {
+  max-width: 85%;
+  padding: 1.25rem 1.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.message-corp.user {
+  align-self: flex-end;
+  background: var(--brand-primary);
+  color: white;
+  border-bottom-right-radius: 2px;
+}
+
+.message-corp.bot {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-bottom-left-radius: 2px;
+}
+
+.escalation-warning-corp {
+  margin-top: 1rem;
+  color: #ffab00;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.chat-input-area-corp {
+  padding: 2rem 2.5rem 2.5rem;
+  background: var(--bg-secondary);
+}
+
+.input-action-group {
+  display: flex;
+  gap: 1rem;
+}
+
+.loading-indicator {
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+.font-800 { font-weight: 800; }
+</style>

@@ -1,47 +1,30 @@
-"""
-Chatbot Blueprint — Feature 7: AI Chatbot (LangChain + RAG)
-Endpoint: POST /api/chatbot
-"""
-from flask import Blueprint, request, jsonify
-from ..services.chatbot_service import get_chatbot_response
-from ..models.escalation import EscalationTicket
-from ..extensions import db
+from flask import request
+from flask_restx import Namespace, Resource
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
+from app.services.chatbot_service import ChatbotService
 
-chatbot_bp = Blueprint('chatbot', __name__)
+chatbot_ns = Namespace('chatbot', description='AI Chatbot operations')
+chatbot_service = ChatbotService()
 
-
-@chatbot_bp.route('/chatbot', methods=['POST'])
-def chatbot():
-    """
-    Feature 7:
-    Accept JSON with `message` field.
-    Pass through LangChain RAG pipeline.
-    Return response. If escalated, save EscalationTicket and include escalated: true.
-    Public endpoint — accessible to all (auth not required per spec).
-    """
-    data = request.get_json()
-    if not data or not data.get('message'):
-        return jsonify({'error': 'message is required'}), 400
-
-    user_message = data['message'].strip()
-    session_context = data.get('session_context', '')
-
-    result = get_chatbot_response(user_message, session_context)
-
-    response_data = {
-        'response': result['answer'],
-        'escalated': result['escalated'],
-    }
-
-    # If escalated, save ticket
-    if result['escalated']:
-        ticket = EscalationTicket(
-            user_query=user_message,
-            session_context=session_context,
-            is_resolved=False,
-        )
-        db.session.add(ticket)
-        db.session.commit()
-        response_data['ticket_id'] = ticket.id
-
-    return jsonify(response_data), 200
+@chatbot_ns.route('')
+class Chat(Resource):
+    def post(self):
+        """Pass query through RAG pipeline, fallback if low confidence (Spec 6.5)"""
+        data = request.get_json()
+        message = data.get('message')
+        
+        if not message:
+            return {'message': 'Query cannot be empty'}, 400
+            
+        context = None
+        try:
+            # Optionally extract user ID for context if logged in
+            verify_jwt_in_request(optional=True)
+            user_id = get_jwt_identity()
+            if user_id:
+                context = f"Internal User ID: {user_id}"
+        except Exception:
+            pass
+            
+        result = chatbot_service.get_response(message, context=context)
+        return result, 200

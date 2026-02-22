@@ -1,111 +1,88 @@
-"""
-Authentication Blueprint
-Endpoints: POST /api/register, POST /api/login, GET /api/me, PUT /api/me
-"""
-from flask import Blueprint, request, jsonify
+from flask import request
+from flask_restx import Namespace, Resource
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from ..extensions import db
-from ..models.user import User
+from datetime import timedelta
+from app.extensions import db
+from app.models.user import User
 
-auth_bp = Blueprint('auth', __name__)
+auth_ns = Namespace('auth', description='Authentication operations')
 
+@auth_ns.route('/register')
+class Register(Resource):
+    def post(self):
+        """Register a new user (Spec 6.1)"""
+        data = request.get_json()
+        
+        if User.query.filter_by(email=data.get('email')).first():
+            return {'message': 'Email already exists'}, 400
+            
+        role = data.get('role', 'user')
+        if role == 'admin':
+            return {'message': 'Admin cannot be registered publicly'}, 403
 
-@auth_bp.route('/register', methods=['POST'])
-def register():
-    """Register a new user (user or organizer role only — admin seeded directly)."""
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
+        user = User(
+            name=data.get('name', data.get('username')),  # support both for legacy compat
+            email=data.get('email'),
+            role=role,
+            city=data.get('city'),
+            budget_preference=data.get('budget_preference', 'mid'),
+            preferred_sports=data.get('preferred_sports', [])
+        )
+        user.set_password(data.get('password'))
+        
+        try:
+            db.session.add(user)
+            db.session.commit()
+            
+            # Additional claim 'role' added for Vue router
+            access_token = create_access_token(
+                identity=user.id,
+                additional_claims={'role': user.role},
+                expires_delta=timedelta(days=30)
+            )
+            return {'user_id': user.id, 'access_token': access_token}, 201
+        except Exception as e:
+            db.session.rollback()
+            return {'message': f'Error creating user: {str(e)}'}, 400
 
-    required = ['name', 'email', 'password', 'role']
-    for field in required:
-        if not data.get(field):
-            return jsonify({'error': f'{field} is required'}), 400
+@auth_ns.route('/login')
+class Login(Resource):
+    def post(self):
+        """Authenticate user (Spec 6.1)"""
+        data = request.get_json()
+        
+        user = User.query.filter_by(email=data.get('email')).first()
+        if not user or not user.check_password(data.get('password')):
+            return {'message': 'Invalid credentials'}, 401
+            
+        access_token = create_access_token(
+            identity=user.id,
+            additional_claims={'role': user.role},
+            expires_delta=timedelta(days=30)
+        )
+        return {'access_token': access_token, 'role': user.role}, 200
 
-    # Prevent public admin registration
-    if data.get('role') == 'admin':
-        return jsonify({'error': 'Admin accounts cannot be registered publicly'}), 403
+@auth_ns.route('/me')
+class Me(Resource):
+    @jwt_required()
+    def get(self):
+        """Get profile (Spec 6.1)"""
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        if not user:
+            return {'message': 'User not found'}, 404
+        return user.to_dict(), 200
 
-    if data.get('role') not in ('user', 'organizer'):
-        return jsonify({'error': 'Role must be user or organizer'}), 400
-
-    # Check existing email
-    if User.query.filter_by(email=data['email']).first():
-        return jsonify({'error': 'Email already registered'}), 409
-
-    user = User(
-        name=data['name'],
-        email=data['email'],
-        role=data['role'],
-        city=data.get('city'),
-        budget_preference=data.get('budget_preference', 'mid'),
-        preferred_sports=data.get('preferred_sports', []),
-    )
-    user.set_password(data['password'])
-
-    db.session.add(user)
-    db.session.commit()
-
-    token = create_access_token(identity=str(user.id), additional_claims={'role': user.role})
-    return jsonify({
-        'message': 'Registration successful',
-        'token': token,
-        'user_id': user.id,
-        'role': user.role,
-    }), 201
-
-
-@auth_bp.route('/login', methods=['POST'])
-def login():
-    """Authenticate user and return JWT with role claim."""
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
-
-    email = data.get('email', '').strip().lower()
-    password = data.get('password', '')
-
-    user = User.query.filter_by(email=email).first()
-    if not user or not user.check_password(password):
-        return jsonify({'error': 'Invalid email or password'}), 401
-
-    token = create_access_token(identity=str(user.id), additional_claims={'role': user.role})
-    return jsonify({
-        'message': 'Login successful',
-        'token': token,
-        'user_id': user.id,
-        'role': user.role,
-        'name': user.name,
-    }), 200
-
-
-@auth_bp.route('/me', methods=['GET'])
-@jwt_required()
-def get_me():
-    """Return authenticated user's profile."""
-    user_id = int(get_jwt_identity())
-    user = User.query.get_or_404(user_id)
-    return jsonify(user.to_dict()), 200
-
-
-@auth_bp.route('/me', methods=['PUT'])
-@jwt_required()
-def update_me():
-    """Update authenticated user's profile (city, budget, sports prefs)."""
-    user_id = int(get_jwt_identity())
-    user = User.query.get_or_404(user_id)
-    data = request.get_json() or {}
-
-    if 'city' in data:
-        user.city = data['city']
-    if 'budget_preference' in data:
-        if data['budget_preference'] not in ('cheap', 'mid', 'premium'):
-            return jsonify({'error': 'budget_preference must be cheap, mid, or premium'}), 400
-        user.budget_preference = data['budget_preference']
-    if 'preferred_sports' in data:
-        user.preferred_sports = data['preferred_sports']
-    if 'name' in data:
-        user.name = data['name']
-
-    db.session.commit()
-    return jsonify({'message': 'Profile updated', 'user': user.to_dict()}), 200
+    @jwt_required()
+    def put(self):
+        """Update profile (Spec 6.1)"""
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        data = request.get_json()
+        
+        user.city = data.get('city', user.city)
+        user.budget_preference = data.get('budget_preference', user.budget_preference)
+        user.preferred_sports = data.get('preferred_sports', user.preferred_sports)
+        
+        db.session.commit()
+        return user.to_dict(), 200

@@ -1,30 +1,20 @@
-"""
-Role-based access control decorators.
-Implements role_required(role) as per Agent Rule #4.
-Returns HTTP 403 if the JWT role claim doesn't match.
-"""
 from functools import wraps
-from flask import jsonify
-from flask_jwt_extended import get_jwt
+from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
+from app.models.user import User
 
-
-def role_required(*allowed_roles):
+def role_required(*required_roles):
     """
-    Decorator factory that enforces role-based access.
-    Usage: @role_required('admin') or @role_required('user', 'organizer')
-    Must be applied AFTER @jwt_required().
+    Custom decorator to protect endpoints by role as per Spec 4.
+    If the user's role is not in required_roles, return HTTP 403 Forbidden.
     """
-    def decorator(fn):
+    def wrapper(fn):
         @wraps(fn)
-        def wrapper(*args, **kwargs):
-            claims = get_jwt()
-            user_role = claims.get('role', '')
-            if user_role not in allowed_roles:
-                return jsonify({
-                    'error': 'Forbidden: insufficient role',
-                    'required': list(allowed_roles),
-                    'your_role': user_role,
-                }), 403
+        def decorator(*args, **kwargs):
+            verify_jwt_in_request()
+            user_id = get_jwt_identity()
+            user = User.query.get(user_id)
+            if not user or user.role not in required_roles:
+                return {'message': 'Forbidden: Insufficient permissions'}, 403
             return fn(*args, **kwargs)
-        return wrapper
-    return decorator
+        return decorator
+    return wrapper

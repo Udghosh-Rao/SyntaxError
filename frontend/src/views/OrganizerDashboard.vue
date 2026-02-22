@@ -1,229 +1,361 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Topbar -->
-    <header class="sticky top-0 z-40 border-b border-gray-100 bg-white/90 backdrop-blur-sm">
-      <div class="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
-        <span class="font-bold text-sm text-gray-900">SportsSync <span class="text-gray-400 font-normal">· Organizer</span></span>
-        <div class="flex items-center gap-3">
-          <span class="text-xs text-gray-500 hidden sm:block">{{ authStore.userName }}</span>
-          <button @click="handleLogout" class="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition">Logout</button>
+  <div class="organizer-dashboard">
+    <div class="container py-12">
+      <div class="dashboard-header-corp mb-12 animate-corp">
+        <div class="header-text">
+          <span class="badge-corp">Management Console</span>
+          <h1 class="hero-title-small mt-4">Architect Dashboard</h1>
+          <p class="text-dim mt-2">Precision monitoring of your event portfolio and revenue stream.</p>
         </div>
-      </div>
-    </header>
-
-    <main class="mx-auto max-w-6xl px-6 py-8">
-      <h1 class="text-xl font-bold text-gray-900 mb-1">Organizer Dashboard</h1>
-      <p class="text-sm text-gray-500 mb-6">Manage events and track performance.</p>
-
-      <!-- Tabs -->
-      <div class="flex gap-1 bg-gray-100 rounded-xl p-1 mb-8 overflow-x-auto">
-        <button
-          v-for="tab in tabs" :key="tab.id"
-          @click="activeTab = tab.id"
-          class="flex-1 min-w-max px-4 py-2 rounded-lg text-xs font-medium transition whitespace-nowrap"
-          :class="activeTab === tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-        >{{ tab.icon }} {{ tab.label }}</button>
+        <router-link to="/organizer/create" class="btn-corp btn-corp-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Deploy New Event
+        </router-link>
       </div>
 
-      <!-- Dashboard -->
-      <div v-if="activeTab === 'dashboard'">
-        <!-- Stats row -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div class="stat-card" v-for="s in summaryCards" :key="s.label">
-            <div class="text-2xl font-bold text-gray-900">{{ s.value }}</div>
-            <div class="text-xs text-gray-400 mt-0.5">{{ s.label }}</div>
+      <div v-if="loading" class="loading-corp-full">
+        <div class="pulse-loader"></div>
+        <span>fetching Dashboard intelligence...</span>
+      </div>
+      
+      <div v-else-if="error" class="error-panel-inline mb-12">{{ error }}</div>
+      
+      <div v-else class="dashboard-grid">
+        <!-- FEATURE: FOUNDER ADMIN KPIs -->
+        <section v-if="authStore.isFounder" class="kpi-grid-corp span-2 mb-8 animate-corp border border-brand-primary/20 rounded-2xl bg-gradient-to-br from-brand-primary/10 to-transparent p-6 shadow-[0_0_30px_rgba(0,240,255,0.05)]">
+          <h2 class="label-muted mb-6 text-brand-primary w-full col-span-4 tracking-widest">Platform Overview (Founder Rights)</h2>
+          <div class="card-premium kpi-card-corp bg-black/60 shadow-inner border-white/5">
+            <span class="label-muted mb-4 opacity-70">Platform Users</span>
+            <span class="kpi-val-corp text-white text-4xl">{{ adminOverview.total_users }}</span>
           </div>
-        </div>
-        <!-- Table -->
-        <div class="bg-white rounded-xl border border-gray-100 shadow-card overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="min-w-full text-xs">
-              <thead class="bg-gray-50 border-b border-gray-100">
+          <div class="card-premium kpi-card-corp bg-black/60 shadow-inner border-white/5">
+            <span class="label-muted mb-4 opacity-70">Platform Events</span>
+            <span class="kpi-val-corp text-white text-4xl">{{ adminOverview.total_events }}</span>
+          </div>
+          <div class="card-premium kpi-card-corp bg-black/60 shadow-inner border-white/5">
+            <span class="label-muted mb-4 opacity-70">Platform Regs</span>
+            <span class="kpi-val-corp text-white text-4xl">{{ adminOverview.total_registrations }}</span>
+          </div>
+          <div class="card-premium kpi-card-corp bg-black/60 shadow-inner border-white/5">
+            <span class="label-muted mb-4 opacity-70">Top Sport</span>
+            <span class="kpi-val-corp text-brand-primary text-2xl font-800">{{ adminOverview.most_popular_sport || 'N/A' }}</span>
+          </div>
+        </section>
+
+        <!-- Feature 11: Ticket Sales Summary KPI -->
+        <section class="kpi-grid-corp span-2 mb-12 animate-corp delay-50">
+          <div class="card-premium kpi-card-corp hover:border-brand-primary/50 transition-all">
+            <span class="label-muted mb-4">Total Capacity Units</span>
+            <span class="kpi-val-corp text-gradient text-5xl">{{ totalCapacity }}</span>
+          </div>
+          <div class="card-premium kpi-card-corp hover:border-brand-primary/50 transition-all">
+            <span class="label-muted mb-4">Commitments Secured</span>
+            <span class="kpi-val-corp text-gradient text-5xl">{{ totalRegistrations }}</span>
+          </div>
+          <div class="card-premium kpi-card-corp hover:border-brand-primary/50 transition-all">
+            <span class="label-muted mb-4">Aggregate Fill Rate</span>
+            <span class="kpi-val-corp text-gradient text-5xl">{{ aggregateFillRate }}%</span>
+          </div>
+          <div class="card-premium kpi-card-corp hover:border-brand-primary/50 transition-all">
+            <span class="label-muted mb-4">Grand Yield</span>
+            <span class="kpi-val-corp text-gradient text-4xl">₹{{ totalRevenue.toLocaleString() }}</span>
+          </div>
+        </section>
+
+        <!-- Overview Table -->
+        <section class="card-premium span-2 animate-corp delay-100">
+          <div class="section-header-corp mb-8">
+            <h2 class="label-muted">Active Event Parameters</h2>
+          </div>
+          <div class="table-wrapper-corp">
+            <table class="table-corp">
+              <thead>
                 <tr>
-                  <th class="text-left px-4 py-3 text-gray-500 font-medium" v-for="h in ['Event', 'Date', 'City', 'Registrations', 'Fill Rate', 'Revenue', 'Status']" :key="h">{{ h }}</th>
+                  <th>Event Designation</th>
+                  <th>Timeline</th>
+                  <th>Bio-Region</th>
+                  <th>Units</th>
+                  <th>Cap</th>
+                  <th>Yield (₹)</th>
+                  <th>Efficiency</th>
+                  <th v-if="authStore.isFounder">Visibility</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-50">
-                <tr v-for="e in events" :key="e.event_id" class="hover:bg-gray-50 transition">
-                  <td class="px-4 py-3 font-medium text-gray-900">{{ e.title }}</td>
-                  <td class="px-4 py-3 text-gray-500">{{ fmt(e.event_date) }}</td>
-                  <td class="px-4 py-3 text-gray-500">{{ e.venue_city }}</td>
-                  <td class="px-4 py-3 text-gray-700">{{ e.registrations }}/{{ e.capacity }}</td>
-                  <td class="px-4 py-3">
-                    <div class="flex items-center gap-2">
-                      <div class="w-16 h-1 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-gray-900 rounded-full" :style="`width:${e.fill_rate}%`"></div></div>
-                      <span class="text-gray-600">{{ e.fill_rate }}%</span>
-                    </div>
+              <tbody>
+                <tr v-for="event in events" :key="event.event_id">
+                  <td class="font-800">{{ event.title }}</td>
+                  <td>{{ new Date(event.event_date).toLocaleDateString('en-GB') }}</td>
+                  <td>{{ event.venue_city }}</td>
+                  <td>{{ event.registrations }}</td>
+                  <td>{{ event.capacity }}</td>
+                  <td class="text-gradient font-800">{{ event.revenue }}</td>
+                  <td>
+                    <span class="badge-corp-small" :class="event.performance_label.toLowerCase()">
+                      {{ event.performance_label }}
+                    </span>
                   </td>
-                  <td class="px-4 py-3 text-gray-700">₹{{ (e.revenue||0).toLocaleString('en-IN') }}</td>
-                  <td class="px-4 py-3">
-                    <span class="badge" :class="e.performance_label?.toLowerCase()==='hot' ? 'badge-green':'badge-yellow'">{{ e.performance_label }}</span>
+                  <td v-if="authStore.isFounder">
+                    <button 
+                      @click="toggleFeatureEvent(event)" 
+                      class="badge-corp-small !cursor-pointer transition-all hover:brightness-125"
+                      :class="event.is_featured ? 'high' : 'medium'"
+                    >
+                      {{ event.is_featured ? 'Featured' : 'Standard' }}
+                    </button>
                   </td>
                 </tr>
-                <tr v-if="!events.length"><td colspan="7" class="px-4 py-8 text-center text-gray-400">No events yet. Create one below.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Create Event -->
-      <div v-if="activeTab === 'create'">
-        <div class="bg-white rounded-xl border border-gray-100 shadow-card p-6 max-w-lg">
-          <h2 class="text-sm font-semibold text-gray-900 mb-5">Create New Event</h2>
-          <form @submit.prevent="handleCreateEvent" class="space-y-4">
-            <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1.5">Event Title</label>
-              <input v-model="newEvent.title" class="input" placeholder="Mumbai Football Championship" required />
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1.5">Sport</label>
-                <select v-model="newEvent.sport_category" class="input">
-                  <option v-for="s in sportsList" :key="s" :value="s">{{ s }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1.5">City</label>
-                <input v-model="newEvent.venue_city" class="input" placeholder="Mumbai" required />
-              </div>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1.5">Venue Address</label>
-              <input v-model="newEvent.venue_address" class="input" placeholder="Wankhede Stadium" />
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1.5">Date & Time</label>
-                <input v-model="newEvent.event_date" type="datetime-local" class="input" required />
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1.5">Price (₹)</label>
-                <input v-model.number="newEvent.price" type="number" min="0" class="input" placeholder="500" required />
-              </div>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1.5">Capacity</label>
-              <input v-model.number="newEvent.capacity" type="number" min="1" class="input" placeholder="100" required />
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1.5">Description</label>
-              <textarea v-model="newEvent.description" class="input resize-none" rows="3" placeholder="Tell participants about your event…"></textarea>
-            </div>
-            <div v-if="createError" class="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{{ createError }}</div>
-            <div v-if="createSuccess" class="text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2">{{ createSuccess }}</div>
-            <button type="submit" :disabled="createLoading"
-              class="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 disabled:opacity-50 transition shadow-btn">
-              {{ createLoading ? 'Creating…' : '+ Create Event' }}
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <!-- Trend (Feature 10) -->
-      <div v-if="activeTab === 'trend'">
-        <div class="bg-white rounded-xl border border-gray-100 shadow-card p-6">
-          <h2 class="text-sm font-semibold text-gray-900 mb-4">Daily Registration Trend</h2>
-          <select v-model="selectedEventId" class="input max-w-xs mb-6" @change="loadTrend">
-            <option value="">Select an event…</option>
-            <option v-for="e in events" :key="e.event_id" :value="e.event_id">{{ e.title }}</option>
-          </select>
-          <div v-if="trendData.length" style="height:260px;"><BarChart :data="trendChartData" /></div>
-          <p v-else class="text-sm text-gray-400">Select an event to see its trend.</p>
-        </div>
-      </div>
-
-      <!-- Ticket Summary (Feature 11) -->
-      <div v-if="activeTab === 'tickets'">
-        <div class="bg-white rounded-xl border border-gray-100 shadow-card overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="min-w-full text-xs">
-              <thead class="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th class="text-left px-4 py-3 text-gray-500 font-medium" v-for="h in ['Event', 'Capacity', 'Sold', '% Filled', 'Revenue']" :key="h">{{ h }}</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-50">
-                <tr v-for="e in ticketSummary" :key="e.event_id" class="hover:bg-gray-50">
-                  <td class="px-4 py-3 font-medium text-gray-900">{{ e.title }}</td>
-                  <td class="px-4 py-3 text-gray-500">{{ e.capacity }}</td>
-                  <td class="px-4 py-3 text-gray-700">{{ e.seats_sold }}</td>
-                  <td class="px-4 py-3">
-                    <div class="flex items-center gap-2">
-                      <div class="w-16 h-1 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-gray-900 rounded-full" :style="`width:${e.percentage_filled}%`"></div></div>
-                      {{ e.percentage_filled }}%
-                    </div>
-                  </td>
-                  <td class="px-4 py-3 text-gray-700">₹{{ (e.revenue||0).toLocaleString('en-IN') }}</td>
+                <tr v-if="events.length === 0">
+                  <td colspan="8" class="text-center py-10 text-muted">No active registrations found.</td>
                 </tr>
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
+        </section>
 
-      <!-- Category Insight (Feature 12) -->
-      <div v-if="activeTab === 'category'">
-        <div class="bg-white rounded-xl border border-gray-100 shadow-card p-6">
-          <h2 class="text-sm font-semibold text-gray-900 mb-5">Popular Sport Categories</h2>
-          <div v-if="categoryData.length" style="height:280px;"><DoughnutChart :data="catChartData" /></div>
-          <p v-else class="text-sm text-gray-400">No registration data yet.</p>
+        <!-- Charts Segment -->
+        <div class="charts-column span-2 grid-inner" v-if="events.length > 0">
+          <section class="card-premium animate-corp delay-200">
+            <h2 class="label-muted mb-8">Registration Pulse</h2>
+            <div class="selector-corp mb-8">
+              <label class="label-muted mb-4">Target Designation</label>
+              <select v-model="selectedEventId" @change="fetchTrendData" class="input-corp">
+                <option v-for="event in events" :key="event.event_id" :value="event.event_id">
+                  {{ event.title }}
+                </option>
+              </select>
+            </div>
+            <div v-if="loadingTrend" class="text-center py-8">
+               <div class="pulse-loader small mx-auto"></div>
+            </div>
+            <RegistrationTrend v-else :data="trendData" />
+          </section>
+
+          <section class="card-premium animate-corp delay-300">
+            <h2 class="label-muted mb-8">Market Segmentation</h2>
+            <CategoryBarChart :data="categoryData" />
+          </section>
+        </div>
+
+        <!-- Charts Row 2: Revenue & Capacity -->
+        <div class="charts-column span-2 grid-inner" v-if="events.length > 0">
+          <section class="card-premium animate-corp delay-400">
+            <h2 class="label-muted mb-8">Revenue per Event</h2>
+            <RevenuePerEventChart :data="events" />
+          </section>
+
+          <section class="card-premium animate-corp delay-400">
+            <h2 class="label-muted mb-8">Capacity Utilization</h2>
+            <CapacityChart :data="events" />
+          </section>
         </div>
       </div>
-    </main>
+    </div>
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import api from '@/services/api'
-import BarChart from '@/components/BarChart.vue'
-import DoughnutChart from '@/components/DoughnutChart.vue'
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+import axios from 'axios';
+import { useAuthStore } from '../stores/auth';
+import RegistrationTrend from '../components/charts/RegistrationTrend.vue';
+import CategoryBarChart from '../components/charts/CategoryBarChart.vue';
+import RevenuePerEventChart from '../components/charts/RevenuePerEventChart.vue';
+import CapacityChart from '../components/charts/CapacityChart.vue';
 
-const router = useRouter(); const authStore = useAuthStore()
-const tabs = [
-  { id:'dashboard', icon:'📊', label:'Events' }, { id:'create', icon:'➕', label:'Create Event' },
-  { id:'trend', icon:'📈', label:'Trend' }, { id:'tickets', icon:'🎟', label:'Tickets' }, { id:'category', icon:'🏅', label:'Categories' },
-]
-const activeTab = ref('dashboard')
-const events = ref([]); const ticketSummary = ref([]); const categoryData = ref([]); const trendData = ref([]); const selectedEventId = ref('')
-const createLoading = ref(false); const createError = ref(''); const createSuccess = ref('')
-const sportsList = ['Football','Cricket','Tennis','Basketball','Running','Badminton','Swimming','Cycling']
-const newEvent = ref({ title:'', sport_category:'Football', venue_city:'', venue_address:'', event_date:'', price:'', capacity:'', description:'' })
+const authStore = useAuthStore();
+const loading = ref(true);
+const loadingTrend = ref(false);
+const error = ref('');
 
-const summaryCards = computed(() => {
-  const e = events.value
-  return [
-    { label:'Total Events', value: e.length },
-    { label:'Registrations', value: e.reduce((a,ev)=>a+ev.registrations,0) },
-    { label:'Revenue', value: '₹'+e.reduce((a,ev)=>a+(ev.revenue||0),0).toLocaleString('en-IN') },
-    { label:'Avg Fill Rate', value: e.length ? Math.round(e.reduce((a,ev)=>a+ev.fill_rate,0)/e.length)+'%':'0%' },
-  ]
-})
-const trendChartData = computed(() => ({ labels:trendData.value.map(d=>d.day), datasets:[{ label:'Registrations', data:trendData.value.map(d=>d.count), backgroundColor:'#111827', borderRadius:4 }] }))
-const catChartData = computed(() => ({ labels:categoryData.value.map(d=>d.sport_category), datasets:[{ data:categoryData.value.map(d=>d.registration_count), backgroundColor:['#22c55e','#f59e0b','#3b82f6','#ef4444','#8b5cf6','#6366f1','#06b6d4','#f97316'] }] }))
+const events = ref<any[]>([]);
+const categoryData = ref<any[]>([]);
+const trendData = ref<any[]>([]);
+const selectedEventId = ref<number | null>(null);
 
-function fmt(d) { return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) }
+const adminOverview = ref<any>({});
 
-async function loadTrend() { if (!selectedEventId.value) return; const r = await api.get(`/organizer/trend/${selectedEventId.value}`); trendData.value = r.data }
+const totalCapacity = computed(() => events.value.reduce((acc, e) => acc + e.capacity, 0));
+const totalRegistrations = computed(() => events.value.reduce((acc, e) => acc + e.registrations, 0));
+const totalRevenue = computed(() => events.value.reduce((acc, e) => acc + e.revenue, 0));
+const aggregateFillRate = computed(() => {
+    if (totalCapacity.value === 0) return 0;
+    return round((totalRegistrations.value / totalCapacity.value) * 100, 1);
+});
 
-async function handleCreateEvent() {
-  createLoading.value = true; createError.value = ''; createSuccess.value = ''
-  try {
-    await api.post('/events', { ...newEvent.value })
-    createSuccess.value = 'Event created successfully!'
-    Object.assign(newEvent.value, { title:'', venue_city:'', venue_address:'', event_date:'', price:'', capacity:'', description:'' })
-    const r = await api.get('/organizer/dashboard'); events.value = r.data
-  } catch (e) { createError.value = e.response?.data?.error || 'Failed to create event' }
-  finally { createLoading.value = false }
+function round(val: number, precision: number) {
+    const multiplier = Math.pow(10, precision || 0);
+    return Math.round(val * multiplier) / multiplier;
 }
 
-function handleLogout() { authStore.logout(); router.push('/') }
+const fetchDashboardData = async () => {
+    loading.value = true;
+    error.value = '';
+    try {
+        const config = { headers: { Authorization: `Bearer ${authStore.token}` } };
+        
+        const promises = [
+            axios.get('http://localhost:8000/api/organizer/dashboard', config),
+            axios.get('http://localhost:8000/api/organizer/category-insight', config)
+        ];
 
-onMounted(async () => {
-  const [dash, tickets, cats] = await Promise.all([api.get('/organizer/dashboard'), api.get('/organizer/ticket-summary'), api.get('/organizer/category-insight')])
-  events.value = dash.data; ticketSummary.value = tickets.data; categoryData.value = cats.data
-})
+        if (authStore.isFounder || authStore.isAdmin) {
+             promises.push(axios.get('http://localhost:8000/api/admin/dashboard', config));
+        }
+
+        const resArray = await Promise.all(promises);
+
+        events.value = resArray[0].data;
+        categoryData.value = resArray[1].data;
+        
+        if (authStore.isFounder || authStore.isAdmin) {
+            adminOverview.value = resArray[2].data;
+        }
+
+        if (events.value.length > 0) {
+            selectedEventId.value = events.value[0].event_id;
+            await fetchTrendData();
+        }
+
+    } catch (err: any) {
+        error.value = 'Failed to synchronize dashboard telemetry.';
+    } finally {
+        loading.value = false;
+    }
+};
+
+const toggleFeatureEvent = async (event: any) => {
+    try {
+        const config = { headers: { Authorization: `Bearer ${authStore.token}` } };
+        const res = await axios.post(`http://localhost:8000/api/organizer/events/${event.event_id}/feature`, {}, config);
+        event.is_featured = res.data.is_featured;
+    } catch (e) {
+        alert('Failed to toggle feature status');
+    }
+};
+
+const fetchTrendData = async () => {
+    if (!selectedEventId.value) return;
+    loadingTrend.value = true;
+    try {
+        const config = { headers: { Authorization: `Bearer ${authStore.token}` } };
+        const res = await axios.get(`http://localhost:8000/api/organizer/trend/${selectedEventId.value}`, config);
+        trendData.value = res.data;
+    } catch (err) {
+        console.error("Trend synchronization failed", err);
+    } finally {
+        loadingTrend.value = false;
+    }
+};
+
+onMounted(() => {
+    fetchDashboardData();
+});
 </script>
+
+<style scoped>
+.organizer-dashboard {
+  background-color: var(--bg-site);
+  min-height: 100vh;
+}
+
+.dashboard-header-corp {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.grid-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.span-2 { grid-column: span 2; }
+
+.kpi-grid-corp {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.kpi-card-corp {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-val-corp {
+  font-size: 1.75rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.font-800 { font-weight: 800; }
+
+.table-wrapper-corp {
+  overflow-x: auto;
+}
+
+.table-corp {
+  width: 100%;
+}
+
+.table-corp th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.badge-corp-small {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-radius: var(--radius-pill);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-corp-small.high { background: rgba(0, 223, 216, 0.1); color: var(--brand-secondary); }
+.badge-corp-small.medium { background: rgba(255, 171, 0, 0.1); color: #ffab00; }
+.badge-corp-small.low { background: rgba(255, 85, 85, 0.1); color: #ff5555; }
+
+.loading-corp-full {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 60px 0;
+  color: var(--text-dim);
+}
+
+.pulse-loader.small {
+  width: 24px;
+  height: 24px;
+}
+
+.card-premium {
+  padding: 2rem;
+}
+
+@media (max-width: 1200px) {
+  .dashboard-header-corp {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2rem;
+  }
+  .grid-inner {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
