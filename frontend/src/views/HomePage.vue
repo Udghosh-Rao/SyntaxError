@@ -42,9 +42,9 @@
                <label class="label-muted text-[10px] tracking-widest text-[#00f3ff] mb-2 block w-full">Ticket Bracket</label>
                <select v-model="budgetFilter" class="input-corp w-full bg-black/60 border-white/10 focus:border-[#00f3ff] transition-all">
                 <option value="all">All Tiers</option>
-                <option value="cheap">General Admission (< ₹500)</option>
+                <option value="cheap">General Admission (&lt; ₹500)</option>
                 <option value="mid">VIP Access (₹500 - ₹2000)</option>
-                <option value="premium">Backstage Pass (> ₹2000)</option>
+                <option value="premium">Backstage Pass (&gt; ₹2000)</option>
               </select>
             </div>
           </div>

@@ -97,7 +97,7 @@ interface User {
   badges: any[];
 }
 
-const props = defineProps<{
+defineProps<{
   user: User;
   isOwnProfile: boolean;
 }>();

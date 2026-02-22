@@ -44,9 +44,9 @@
               <div class="input-stack mt-6">
                 <label class="label-muted text-[10px] tracking-widest text-white/50 mb-2">Ticket Preference</label>
                 <select v-model="form.budget_preference" class="input-corp bg-black/40 border-white/10 focus:border-[#00f3ff]">
-                  <option value="cheap">General Admission (< ₹500)</option>
+                  <option value="cheap">General Admission (&lt; ₹500)</option>
                   <option value="mid">VIP Access (₹500 - ₹2000)</option>
-                  <option value="premium">Backstage Pass (> ₹2000)</option>
+                  <option value="premium">Backstage Pass (&gt; ₹2000)</option>
                 </select>
               </div>
           </div>

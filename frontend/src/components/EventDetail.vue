@@ -30,15 +30,7 @@ import { useRoute } from 'vue-router';
 const route = useRoute();
 const event = ref<any>(null);
 
-interface Event {
-  id: number;
-  title: string;
-  date: string;
-  location: string;
-  image: string;
-  description: string;
-  attendees: number;
-}
+// Redundant interface removed
 
 onMounted(() => {
   // Simulate fetching event details
