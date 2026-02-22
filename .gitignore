@@ -1,48 +1,28 @@
-# Environment & Secrets
-.env
-*.env.local
-*.env.production
-*.env.staging
+# Node.js
+**/node_modules/
+**/dist/
+**/dist-ssr/
+*.log
+package-lock.json
 
 # Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-venv/
-env/
-.venv/
-instance/
-*.egg-info/
-dist/
-build/
-*.so
-.pytest_cache/
+**/venv/
+**/.venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+**/instance/
 *.db
-*.sqlite
-*.sqlite3
-migrations/versions/
 
-# Node / Vue
-node_modules/
-frontend/dist/
-frontend/.vite/
-.DS_Store
+# Environment variables
+.env
+**/frontend/.env
+**/backend/.env
 
-# IDE
+# IDE and OS
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
 *.swp
 *.swo
-.gitkeep
-
-# Logs
-*.log
-logs/
-npm-debug.log*
-
-# FAISS / ML artifacts
-faiss_index/
-*.index
-*.faiss

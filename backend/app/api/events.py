@@ -1,191 +1,123 @@
-"""
-Events Blueprint
-Endpoints:
-  GET    /api/events              — List all active events (with recommendation scoring for auth users)
-  GET    /api/events/:id          — Get event detail
-  GET    /api/events/:id/similar  — Similar events (Feature 5)
-  POST   /api/events              — Create event (organizer only)
-  PUT    /api/events/:id          — Update event (organizer only, own events)
-  DELETE /api/events/:id          — Soft-delete event (organizer only, own events)
-"""
-from flask import Blueprint, request, jsonify, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request, get_jwt
-from ..extensions import db
-from ..models.event import Event
-from ..models.user import User
-from ..services.recommendation import score_events
-from ..services.algolia_sync import sync_event_to_algolia, remove_event_from_algolia
-from ..utils.decorators import role_required
+from flask import request
+from flask_restx import Namespace, Resource
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
+from app.extensions import db
+from app.models.event import Event
+from app.models.user import User
+from app.services.recommendation import RecommendationService
+from app.services.algolia_sync import AlgoliaSyncService
+from app.utils.decorators import role_required
+from datetime import datetime
 
-events_bp = Blueprint('events', __name__)
+events_ns = Namespace('events', description='Event operations')
+algolia_service = AlgoliaSyncService()
 
+@events_ns.route('')
+class EventList(Resource):
+    def get(self):
+        """Get all events with Feature 1-4 recommendation scoring (Spec 6.2)"""
+        user = None
+        try:
+            verify_jwt_in_request(optional=True)
+            user_id = get_jwt_identity()
+            if user_id:
+                user = User.query.get(user_id)
+        except Exception:
+            pass
 
-@events_bp.route('/events', methods=['GET'])
-def get_events():
-    """
-    Return all active events.
-    If authenticated, apply recommendation scoring (Features 1–4).
-    Otherwise, sort by registration count descending.
-    """
-    events = Event.query.filter_by(is_active=True).all()
+        events = RecommendationService.get_recommended(user, limit=50)
+        return [e.to_dict() for e in events], 200
 
-    # Try to get JWT identity (optional JWT)
-    user = None
-    try:
-        verify_jwt_in_request(optional=True)
-        uid = get_jwt_identity()
-        if uid:
-            user = User.query.get(int(uid))
-    except Exception:
-        pass
+    @jwt_required()
+    @role_required('organizer')
+    def post(self):
+        """Create a new event (Spec 6.2)"""
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        try:
+            event = Event(
+                title=data['title'],
+                sport_category=data['sport_category'],
+                description=data.get('description'),
+                venue_city=data.get('venue_city'),
+                venue_address=data.get('venue_address'),
+                event_date=datetime.fromisoformat(data['event_date'].replace('Z', '+00:00')),
+                capacity=int(data['capacity']),
+                price=float(data['price']),
+                tags=data.get('tags', []),
+                banner_url=data.get('banner_url'),
+                organizer_id=user_id,
+                is_active=True
+            )
+            event.save() # Computes price_tier and commits
+            algolia_service.index_event(event)
+            return event.to_dict(), 201
+        except Exception as e:
+            db.session.rollback()
+            return {'message': str(e)}, 400
 
-    if user:
-        events = score_events(events, user)
-    else:
-        events.sort(key=lambda e: e.seats_sold, reverse=True)
+@events_ns.route('/<int:id>')
+class EventDetail(Resource):
+    def get(self, id):
+        """Get full details of a single event (Spec 6.2)"""
+        event = Event.query.get(id)
+        if not event or not event.is_active:
+            return {'message': 'Event not found'}, 404
+        return event.to_dict(), 200
 
-    return jsonify([e.to_dict() for e in events]), 200
+    @jwt_required()
+    @role_required('organizer')
+    def put(self, id):
+        """Update an existing event (Spec 6.2)"""
+        user_id = get_jwt_identity()
+        event = Event.query.get(id)
+        if not event:
+            return {'message': 'Event not found'}, 404
+        if event.organizer_id != user_id:
+            return {'message': 'Forbidden'}, 403
 
+        data = request.get_json()
+        event.title = data.get('title', event.title)
+        event.sport_category = data.get('sport_category', event.sport_category)
+        event.description = data.get('description', event.description)
+        event.venue_city = data.get('venue_city', event.venue_city)
+        event.venue_address = data.get('venue_address', event.venue_address)
+        if 'event_date' in data:
+            event.event_date = datetime.fromisoformat(data['event_date'].replace('Z', '+00:00'))
+        event.capacity = int(data.get('capacity', event.capacity))
+        event.price = float(data.get('price', event.price))
+        event.tags = data.get('tags', event.tags)
+        
+        event.save()
+        algolia_service.index_event(event)
+        return event.to_dict(), 200
 
-@events_bp.route('/events/<int:event_id>', methods=['GET'])
-def get_event(event_id):
-    """Return full details of a single event."""
-    event = Event.query.get_or_404(event_id)
-    return jsonify(event.to_dict()), 200
+    @jwt_required()
+    @role_required('organizer', 'admin')
+    def delete(self, id):
+        """Soft delete an event by making it inactive (Spec 6.2)"""
+        user_id = get_jwt_identity()
+        event = Event.query.get(id)
+        if not event:
+            return {'message': 'Event not found'}, 404
+            
+        user = User.query.get(user_id)
+        if user.role != 'admin' and event.organizer_id != user_id:
+            return {'message': 'Forbidden'}, 403
 
+        event.is_active = False
+        db.session.commit()
+        algolia_service.remove_event(event.id)
+        return {'message': 'Event deleted'}, 200
 
-@events_bp.route('/events/<int:event_id>/similar', methods=['GET'])
-def get_similar_events(event_id):
-    """
-    Feature 5: Return up to 5 events with the same sport_category and venue_city,
-    sorted by confirmed registration count descending, excluding the event itself.
-    """
-    event = Event.query.get_or_404(event_id)
-    similar = (
-        Event.query
-        .filter(
-            Event.id != event_id,
-            Event.sport_category == event.sport_category,
-            Event.venue_city == event.venue_city,
-            Event.is_active == True,
-        )
-        .all()
-    )
-    # Sort by seats_sold descending
-    similar.sort(key=lambda e: e.seats_sold, reverse=True)
-    similar = similar[:5]
-    return jsonify([e.to_dict() for e in similar]), 200
-
-
-@events_bp.route('/events', methods=['POST'])
-@jwt_required()
-@role_required('organizer')
-def create_event():
-    """Create a new event. Organizer only. Auto-computes price_tier. Syncs to Algolia."""
-    organizer_id = int(get_jwt_identity())
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
-
-    required = ['title', 'sport_category', 'event_date', 'capacity', 'price']
-    for f in required:
-        if data.get(f) is None:
-            return jsonify({'error': f'{f} is required'}), 400
-
-    from datetime import datetime
-    event = Event(
-        title=data['title'],
-        sport_category=data['sport_category'],
-        description=data.get('description'),
-        venue_city=data.get('venue_city'),
-        venue_address=data.get('venue_address'),
-        event_date=datetime.fromisoformat(data['event_date']),
-        capacity=int(data['capacity']),
-        price=float(data['price']),
-        organizer_id=organizer_id,
-        tags=data.get('tags', []),
-        banner_url=data.get('banner_url'),
-        is_active=True,
-    )
-    event.assign_price_tier()
-
-    db.session.add(event)
-    db.session.commit()
-
-    # Sync to Algolia
-    try:
-        sync_event_to_algolia(event)
-    except Exception as e:
-        current_app.logger.warning(f'Algolia sync failed: {e}')
-
-    return jsonify(event.to_dict()), 201
-
-
-@events_bp.route('/events/<int:event_id>', methods=['PUT'])
-@jwt_required()
-@role_required('organizer')
-def update_event(event_id):
-    """Update an event. Organizer only, must own the event."""
-    organizer_id = int(get_jwt_identity())
-    event = Event.query.get_or_404(event_id)
-
-    if event.organizer_id != organizer_id:
-        return jsonify({'error': 'Forbidden: you do not own this event'}), 403
-
-    data = request.get_json() or {}
-    from datetime import datetime
-
-    if 'title' in data:
-        event.title = data['title']
-    if 'sport_category' in data:
-        event.sport_category = data['sport_category']
-    if 'description' in data:
-        event.description = data['description']
-    if 'venue_city' in data:
-        event.venue_city = data['venue_city']
-    if 'venue_address' in data:
-        event.venue_address = data['venue_address']
-    if 'event_date' in data:
-        event.event_date = datetime.fromisoformat(data['event_date'])
-    if 'capacity' in data:
-        event.capacity = int(data['capacity'])
-    if 'price' in data:
-        event.price = float(data['price'])
-        event.assign_price_tier()
-    if 'tags' in data:
-        event.tags = data['tags']
-    if 'banner_url' in data:
-        event.banner_url = data['banner_url']
-
-    db.session.commit()
-
-    # Sync to Algolia
-    try:
-        sync_event_to_algolia(event)
-    except Exception as e:
-        current_app.logger.warning(f'Algolia sync failed: {e}')
-
-    return jsonify(event.to_dict()), 200
-
-
-@events_bp.route('/events/<int:event_id>', methods=['DELETE'])
-@jwt_required()
-@role_required('organizer')
-def delete_event(event_id):
-    """Soft-delete (deactivate) an event. Organizer only, must own the event."""
-    organizer_id = int(get_jwt_identity())
-    event = Event.query.get_or_404(event_id)
-
-    if event.organizer_id != organizer_id:
-        return jsonify({'error': 'Forbidden: you do not own this event'}), 403
-
-    event.is_active = False
-    db.session.commit()
-
-    # Remove from Algolia
-    try:
-        remove_event_from_algolia(event.id)
-    except Exception as e:
-        current_app.logger.warning(f'Algolia delete failed: {e}')
-
-    return jsonify({'message': 'Event deactivated successfully'}), 200
+@events_ns.route('/<int:id>/similar')
+class EventSimilar(Resource):
+    def get(self, id):
+        """Get similar events (Feature 5)"""
+        event = Event.query.get(id)
+        if not event:
+            return {'message': 'Event not found'}, 404
+            
+        similar = RecommendationService.get_similar(event, limit=5)
+        return [e.to_dict() for e in similar], 200

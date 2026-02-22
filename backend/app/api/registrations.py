@@ -1,86 +1,81 @@
-"""
-Registrations Blueprint
-Endpoints:
-  POST /api/registrations              — Register user for event (user only)
-  GET  /api/registrations/my           — Get user's registrations (user only)
-  PUT  /api/registrations/:id/cancel   — Cancel a registration (user only)
-"""
-from flask import Blueprint, request, jsonify
+from flask import request
+from flask_restx import Namespace, Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from ..extensions import db
-from ..models.registration import Registration
-from ..models.event import Event
-from ..utils.decorators import role_required
+from app.extensions import db
+from app.models.registration import Registration
+from app.models.event import Event
+from app.utils.decorators import role_required
 
-registrations_bp = Blueprint('registrations', __name__)
+registrations_ns = Namespace('registrations', description='Registration operations')
 
+@registrations_ns.route('')
+class RegistrationCreate(Resource):
+    @jwt_required()
+    @role_required('user')
+    def post(self):
+        """Create a new registration (Spec 6.3)"""
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        event_id = data.get('event_id')
+        
+        event = Event.query.get(event_id)
+        if not event or not event.is_active:
+            return {'message': 'Event not found or inactive'}, 404
+            
+        if event.seats_remaining <= 0:
+            return {'message': 'Event is sold out'}, 400
+            
+        existing = Registration.query.filter_by(user_id=user_id, event_id=event_id).first()
+        if existing:
+            return {'message': 'Already registered'}, 400
+            
+        role = data.get('role', 'athlete')
+        role_details = data.get('role_details', {})
 
-@registrations_bp.route('/registrations', methods=['POST'])
-@jwt_required()
-@role_required('user')
-def create_registration():
-    """Create a registration for the authenticated user. Checks seats & prevents duplicates."""
-    user_id = int(get_jwt_identity())
-    data = request.get_json()
-    if not data or not data.get('event_id'):
-        return jsonify({'error': 'event_id is required'}), 400
+        status = 'confirmed' if event.price == 0 else 'pending'
+        reg = Registration(
+            user_id=user_id,
+            event_id=event_id,
+            status=status,
+            role=role,
+            role_details=role_details
+        )
+        try:
+            db.session.add(reg)
+            db.session.commit()
+            return {'message': 'Registration created', 'registration_id': reg.id}, 201
+        except Exception as e:
+            db.session.rollback()
+            return {'message': str(e)}, 400
 
-    event_id = int(data['event_id'])
-    event = Event.query.get_or_404(event_id)
+@registrations_ns.route('/my')
+class MyRegistrations(Resource):
+    @jwt_required()
+    @role_required('user')
+    def get(self):
+        """Get authenticated user's registrations (Spec 6.3)"""
+        user_id = get_jwt_identity()
+        regs = Registration.query.filter_by(user_id=user_id).all()
+        return [r.to_dict() for r in regs], 200
 
-    if not event.is_active:
-        return jsonify({'error': 'Event is not active'}), 400
-
-    # Check seats
-    if event.seats_remaining <= 0:
-        return jsonify({'error': 'No seats remaining for this event'}), 400
-
-    # Check duplicate registration
-    existing = Registration.query.filter_by(user_id=user_id, event_id=event_id).first()
-    if existing and existing.status != 'cancelled':
-        return jsonify({'error': 'You are already registered for this event'}), 409
-
-    # Create new registration (status: pending — confirmed after payment)
-    registration = Registration(
-        user_id=user_id,
-        event_id=event_id,
-        status='pending',
-    )
-    db.session.add(registration)
-    db.session.commit()
-
-    return jsonify({
-        'message': 'Registration created. Proceed to payment.',
-        'registration_id': registration.id,
-        'status': registration.status,
-    }), 201
-
-
-@registrations_bp.route('/registrations/my', methods=['GET'])
-@jwt_required()
-@role_required('user')
-def get_my_registrations():
-    """Return all registrations for the authenticated user with event and payment details."""
-    user_id = int(get_jwt_identity())
-    registrations = Registration.query.filter_by(user_id=user_id).all()
-    return jsonify([r.to_dict(include_event=True, include_payment=True) for r in registrations]), 200
-
-
-@registrations_bp.route('/registrations/<int:reg_id>/cancel', methods=['PUT'])
-@jwt_required()
-@role_required('user')
-def cancel_registration(reg_id):
-    """Cancel a registration. Only the owning user may cancel."""
-    user_id = int(get_jwt_identity())
-    reg = Registration.query.get_or_404(reg_id)
-
-    if reg.user_id != user_id:
-        return jsonify({'error': 'Forbidden: not your registration'}), 403
-
-    if reg.status == 'cancelled':
-        return jsonify({'error': 'Registration already cancelled'}), 400
-
-    reg.status = 'cancelled'
-    db.session.commit()
-
-    return jsonify({'message': 'Registration cancelled successfully', 'registration_id': reg_id}), 200
+@registrations_ns.route('/<int:id>/cancel')
+class RegistrationCancel(Resource):
+    @jwt_required()
+    @role_required('user')
+    def put(self, id):
+        """Cancel a registration (Spec 6.3)"""
+        user_id = get_jwt_identity()
+        reg = Registration.query.get(id)
+        
+        if not reg:
+            return {'message': 'Registration not found'}, 404
+            
+        if reg.user_id != user_id:
+            return {'message': 'Forbidden'}, 403
+            
+        if reg.status == 'cancelled':
+            return {'message': 'Already cancelled'}, 400
+            
+        reg.status = 'cancelled'
+        db.session.commit()
+        return {'message': 'Registration cancelled', 'registration': reg.to_dict()}, 200
