@@ -19,7 +19,7 @@ class EventList(Resource):
         user = None
         try:
             verify_jwt_in_request(optional=True)
-            user_id = get_jwt_identity()
+            user_id = int(get_jwt_identity())
             if user_id:
                 user = User.query.get(user_id)
         except Exception:
@@ -32,7 +32,7 @@ class EventList(Resource):
     @role_required('organizer')
     def post(self):
         """Create a new event (Spec 6.2)"""
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         data = request.get_json()
         
         try:
@@ -70,7 +70,7 @@ class EventDetail(Resource):
     @role_required('organizer')
     def put(self, id):
         """Update an existing event (Spec 6.2)"""
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         event = Event.query.get(id)
         if not event:
             return {'message': 'Event not found'}, 404
@@ -97,7 +97,7 @@ class EventDetail(Resource):
     @role_required('organizer', 'admin')
     def delete(self, id):
         """Soft delete an event by making it inactive (Spec 6.2)"""
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         event = Event.query.get(id)
         if not event:
             return {'message': 'Event not found'}, 404

@@ -1,6 +1,4 @@
 import os
-import faiss
-import numpy as np
 from app.extensions import db
 from app.models.escalation import EscalationTicket
 

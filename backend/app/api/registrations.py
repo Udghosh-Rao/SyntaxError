@@ -14,7 +14,7 @@ class RegistrationCreate(Resource):
     @role_required('user')
     def post(self):
         """Create a new registration (Spec 6.3)"""
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         data = request.get_json()
         event_id = data.get('event_id')
         
@@ -54,7 +54,7 @@ class MyRegistrations(Resource):
     @role_required('user')
     def get(self):
         """Get authenticated user's registrations (Spec 6.3)"""
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         regs = Registration.query.filter_by(user_id=user_id).all()
         return [r.to_dict() for r in regs], 200
 
@@ -64,7 +64,7 @@ class RegistrationCancel(Resource):
     @role_required('user')
     def put(self, id):
         """Cancel a registration (Spec 6.3)"""
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         reg = Registration.query.get(id)
         
         if not reg:

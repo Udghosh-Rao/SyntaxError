@@ -20,7 +20,7 @@ class Chat(Resource):
         try:
             # Optionally extract user ID for context if logged in
             verify_jwt_in_request(optional=True)
-            user_id = get_jwt_identity()
+            user_id = int(get_jwt_identity())
             if user_id:
                 context = f"Internal User ID: {user_id}"
         except Exception:

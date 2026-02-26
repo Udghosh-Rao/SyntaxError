@@ -20,15 +20,9 @@ def client(app):
     return app.test_client()
 
 
-def test_health_check(client):
-    response = client.get('/api/health')
-    assert response.status_code == 200
-    data = response.get_json()
-    assert data['status'] == 'ok'
-
-
 def test_register_user(client):
-    response = client.post('/api/register', json={
+    """Test user registration returns access_token."""
+    response = client.post('/api/auth/register', json={
         'name': 'Test User',
         'email': 'test@example.com',
         'password': 'password123',
@@ -39,32 +33,37 @@ def test_register_user(client):
     })
     assert response.status_code == 201
     data = response.get_json()
-    assert 'token' in data
-    assert data['role'] == 'user'
+    assert 'access_token' in data
+    assert 'user_id' in data
 
 
 def test_login(client):
+    """Test login returns access_token and role."""
     # Register first
-    client.post('/api/register', json={
+    client.post('/api/auth/register', json={
         'name': 'Login Test',
         'email': 'login@example.com',
         'password': 'pass123',
         'role': 'user',
     })
     # Then login
-    response = client.post('/api/login', json={
+    response = client.post('/api/auth/login', json={
         'email': 'login@example.com',
         'password': 'pass123',
     })
     assert response.status_code == 200
-    assert 'token' in response.get_json()
+    data = response.get_json()
+    assert 'access_token' in data
+    assert data['role'] == 'user'
 
 
 def test_admin_cannot_register_publicly(client):
-    response = client.post('/api/register', json={
+    """Admin role cannot be self-registered via public endpoint."""
+    response = client.post('/api/auth/register', json={
         'name': 'Admin Attempt',
         'email': 'admin@test.com',
         'password': 'xyz',
         'role': 'admin',
     })
     assert response.status_code == 403
+

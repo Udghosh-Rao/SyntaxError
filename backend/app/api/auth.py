@@ -36,7 +36,7 @@ class Register(Resource):
             
             # Additional claim 'role' added for Vue router
             access_token = create_access_token(
-                identity=user.id,
+                identity=str(user.id),
                 additional_claims={'role': user.role},
                 expires_delta=timedelta(days=30)
             )
@@ -56,7 +56,7 @@ class Login(Resource):
             return {'message': 'Invalid credentials'}, 401
             
         access_token = create_access_token(
-            identity=user.id,
+            identity=str(user.id),
             additional_claims={'role': user.role},
             expires_delta=timedelta(days=30)
         )
@@ -67,7 +67,7 @@ class Me(Resource):
     @jwt_required()
     def get(self):
         """Get profile (Spec 6.1)"""
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         if not user:
             return {'message': 'User not found'}, 404
@@ -76,7 +76,7 @@ class Me(Resource):
     @jwt_required()
     def put(self):
         """Update profile (Spec 6.1)"""
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         data = request.get_json()
         

@@ -16,7 +16,7 @@ class OrganizerDashboard(Resource):
     @role_required('organizer')
     def get(self):
         """Get event list with KPIs (Spec 6.6 / Feature 8 & 9)"""
-        uid = get_jwt_identity()
+        uid = int(get_jwt_identity())
         events = Event.query.filter_by(organizer_id=uid, is_active=True).all()
         
         return [{
@@ -39,7 +39,7 @@ class RegistrationTrend(Resource):
     @role_required('organizer')
     def get(self, event_id):
         """Get daily registration counts for line chart (Spec 6.6 / Feature 10)"""
-        uid = get_jwt_identity()
+        uid = int(get_jwt_identity())
         event = Event.query.get(event_id)
         if not event or event.organizer_id != uid:
             return {'message': 'Forbidden or not found'}, 403
@@ -60,7 +60,7 @@ class TicketSummary(Resource):
     @role_required('organizer')
     def get(self):
         """Get ticket sales summary across events (Spec 6.6 / Feature 11)"""
-        uid = get_jwt_identity()
+        uid = int(get_jwt_identity())
         events = Event.query.filter_by(organizer_id=uid, is_active=True).all()
         
         return [{
@@ -77,7 +77,7 @@ class CategoryInsight(Resource):
     @role_required('organizer')
     def get(self):
         """Get registrations grouped by sport category (Spec 6.6 / Feature 12)"""
-        uid = get_jwt_identity()
+        uid = int(get_jwt_identity())
         rows = db.session.query(
             Event.sport_category,
             func.count(Registration.id).label('registrations')
@@ -93,7 +93,7 @@ class FeatureEvent(Resource):
     @role_required('founder', 'admin', 'organizer')
     def post(self, event_id):
         """Toggle is_featured for an event (US-09)"""
-        uid = get_jwt_identity()
+        uid = int(get_jwt_identity())
         user = User.query.get(uid)
         
         event = Event.query.get(event_id)

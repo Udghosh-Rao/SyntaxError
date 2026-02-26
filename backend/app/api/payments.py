@@ -17,7 +17,7 @@ class CreateOrder(Resource):
     @role_required('user')
     def post(self):
         """Create Razorpay order (Spec 6.4)"""
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         data = request.get_json()
         event_id = data.get('event_id')
         
