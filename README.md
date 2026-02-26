@@ -1,244 +1,448 @@
-# SyntaxError - Sports Event Management MVP
+# ⚽ SyntaxError — Sports Event Management Platform
 
-A comprehensive sports event management platform with intelligent recommendations, real-time analytics, and seamless payment processing.
+> **SE Team 026** | Full-Stack MVP | Flask + Vue 3 + Tailwind CSS
 
-## Project Overview
+A full-stack sports event management platform that connects **organizers**, **athletes**, and **admins** through intelligent recommendations, real-time analytics, and seamless payment processing.
 
-SyntaxError is a full-stack application built for SE Team 026 that solves the gap in sports event industry by providing:
+---
 
-- **Unified Digital Platform**: Connects event organizers with participants
-- **Intelligent Recommendations**: Rule-based and AI-assisted event suggestions
-- **Business Intelligence**: Dashboards for organizers and admins
-- **Secure Payments**: Razorpay integrated checkout
-- **24/7 AI Chatbot**: LangChain-powered conversational support
-- **Fast Search**: Typo-tolerant search via Algolia
+## 📋 Table of Contents
 
-## Technology Stack
+- [Project Overview](#-project-overview)
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Architecture & Pipeline](#-architecture--pipeline)
+- [Project Structure](#-project-structure)
+- [User Roles](#-user-roles)
+- [API Endpoints](#-api-endpoints)
+- [Getting Started](#-getting-started)
+- [Environment Variables](#-environment-variables)
+- [Running Tests](#-running-tests)
+- [Seed Data (Demo Users)](#-seed-data-demo-users)
+
+---
+
+## 🌟 Project Overview
+
+SyntaxError solves the fragmented sports event ecosystem by providing a **unified digital platform** where:
+
+- **Organizers** can create, manage, and analyse their sports events
+- **Athletes** can discover, register, and pay for events that match their city, budget, and sport preferences
+- **Admins** get a bird's-eye view of the entire platform with real-time analytics
+
+---
+
+## ✨ Features
+
+### 🔐 Authentication & Roles (4 Features)
+| # | Feature |
+|---|---------|
+| 1 | User registration (user / organizer roles) |
+| 2 | JWT-based login with role-encoded tokens |
+| 3 | View & update user profile |
+| 4 | Role-based access control (RBAC) on every endpoint |
+
+### 🗓️ Events & Smart Recommendations (5 Features)
+| # | Feature |
+|---|---------|
+| 1 | **Sport preference match** — events matching user's preferred sports scored higher (+40 pts) |
+| 2 | **City-based filtering** — local events prioritised (+30 pts) |
+| 3 | **Budget tier matching** — cheap / mid / premium filter (+20 pts) |
+| 4 | **Upcoming in 7 days** — time-sensitive events boosted (+10 pts) |
+| 5 | **Similar events** — same sport + city recommendations |
+
+### 💳 Payments (2 Features)
+| # | Feature |
+|---|---------|
+| 6 | Razorpay order creation with platform fee calculation (15%) |
+| 7 | Payment signature verification & automatic registration confirmation |
+
+### 🏢 Organizer Dashboard (5 Features)
+| # | Feature |
+|---|---------|
+| 8  | Event list with KPIs (registrations, revenue, fill-rate) |
+| 9  | Performance badges: LOW / MEDIUM / HIGH fill rate labels |
+| 10 | Daily registration trend data (line-chart ready) |
+| 11 | Ticket sales summary across all events |
+| 12 | Sport category breakdown (registrations per sport) |
+
+### 📊 Admin Analytics (6 Features)
+| # | Feature |
+|---|---------|
+| 13 | Unified platform dashboard (total users, events, registrations, revenue) |
+| 14 | Most popular sport categories |
+| 15 | User distribution by city |
+| 16 | Platform-wide event fill-rate tracking |
+| 17 | Monthly registration trend |
+| 18 | Organizer performance comparison |
+
+### 🤖 AI Chatbot (1 Feature)
+| # | Feature |
+|---|---------|
+| 19 | Keyword-based FAQ chatbot with escalation ticket creation for unresolved queries |
+
+### 🔍 Search (1 Feature)
+| # | Feature |
+|---|---------|
+| 20 | Algolia-powered typo-tolerant search (mock-ready, real keys pluggable) |
+
+---
+
+## 🛠️ Tech Stack
 
 ### Backend
-- **Framework**: Flask 3.0.3 with Flask-RESTful
-- **Database**: PostgreSQL/SQLite with SQLAlchemy ORM
-- **Authentication**: JWT (Flask-JWT-Extended)
-- **Database Migration**: Flask-Migrate
-- **API Documentation**: RESTful endpoints with full CORS support
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Python | 3.8+ | Runtime |
+| Flask | 3.0.3 | Web framework |
+| Flask-RESTx | 1.3.0 | REST API + Swagger UI |
+| Flask-JWT-Extended | 4.6.0 | JWT authentication |
+| Flask-SQLAlchemy | 3.1.1 | ORM |
+| Flask-Migrate | 4.0.7 | DB migrations |
+| Flask-CORS | 4.0.1 | Cross-origin requests |
+| SQLite (dev) / PostgreSQL (prod) | — | Database |
+| Razorpay SDK | 1.4.1 | Payment processing |
+| Algolia | 3.0.0 | Search indexing |
+| LangChain + OpenAI/Gemini | 0.2.x | AI chatbot RAG pipeline |
+| Werkzeug | 3.0.4 | Password hashing |
 
 ### Frontend
-- **Framework**: Vue 3 with Composition API
-- **Routing**: Vue Router for SPA navigation
-- **State Management**: Pinia
-- **Build Tool**: Vite CLI
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Vue 3 | ^3.3.4 | UI framework (Composition API) |
+| TypeScript | ^5.1.6 | Type safety |
+| Vite | ^4.4.5 | Build tool & dev server |
+| Vue Router | ^4.2.4 | Client-side routing |
+| Pinia | ^2.1.4 | State management |
+| Tailwind CSS | ^3.3.3 | Utility-first styling |
+| Chart.js | ^4.5.1 | Analytics charts |
+| Axios | ^1.4.0 | HTTP client |
 
-### External Integrations
-- **Payments**: Razorpay for secure payment processing
-- **Search**: Algolia for instant, typo-tolerant event search
-- **GenAI**: OpenAI, Google Gemini, HuggingFace with LangChain
-- **Version Control**: GitHub
-- **Project Management**: Jira
+---
 
-## Project Structure
+## 🏗️ Architecture & Pipeline
+
+```
+┌──────────────────────────────────────────────────────┐
+│                     Browser (Vue 3 SPA)               │
+│  ┌──────────┐  ┌──────────────┐  ┌─────────────────┐ │
+│  │  Auth &  │  │   Events &   │  │    Dashboards   │ │
+│  │ Register │  │ Registration │  │  Admin/Organizer │ │
+│  └────┬─────┘  └──────┬───────┘  └────────┬────────┘ │
+└───────┼───────────────┼──────────────────-┼──────────┘
+        │  Axios (JWT Bearer Token headers)  │
+        ▼                                   ▼
+┌──────────────────────────────────────────────────────┐
+│               Flask REST API  (/api/*)                │
+│  ┌───────┐ ┌────────┐ ┌─────────────┐ ┌──────────┐  │
+│  │ auth  │ │ events │ │ organizer/  │ │ payments │  │
+│  │       │ │        │ │    admin    │ │          │  │
+│  └───────┘ └────────┘ └─────────────┘ └──────────┘  │
+│           Flask-JWT-Extended (RBAC)                   │
+│           Flask-SQLAlchemy (ORM)                      │
+└────────────────┬─────────────────────────────────────┘
+                 │
+        ┌────────▼────────┐
+        │  SQLite / PgSQL  │
+        │   (via ORM)      │
+        └────────┬─────────┘
+                 │ (External Services — Keys optional for dev)
+        ┌────────▼──────────────────┐
+        │  Razorpay  │  Algolia     │
+        │  Payments  │  Search      │
+        └────────────┴──────────────┘
+
+Request Pipeline:
+  Client → Vue Router → Pinia Store → Axios → Flask Blueprint
+         → JWT Validation → role_required() decorator
+         → Resource Handler → SQLAlchemy → DB → JSON Response
+```
+
+---
+
+## 📁 Project Structure
 
 ```
 SyntaxError/
 ├── backend/
 │   ├── app/
-│   │   ├── __init__.py          # Flask app factory
-│   │   ├── config.py            # Configuration management
-│   │   ├── extensions.py        # Flask extensions setup
-│   │   ├── models/              # SQLAlchemy models
-│   │   │   ├── user.py
-│   │   │   ├── event.py
-│   │   │   ├── registration.py
-│   │   │   └── payment.py
-│   │   ├── api/                 # REST API endpoints
-│   │   │   ├── auth.py
-│   │   │   ├── events.py
-│   │   │   ├── payments.py
-│   │   │   ├── chatbot.py
-│   │   │   ├── organizer.py
-│   │   │   └── admin.py
-│   │   └── services/            # Business logic
-│   │       ├── recommendation.py
-│   │       ├── chatbot_service.py
-│   │       ├── algolia_sync.py
-│   │       └── razorpay_service.py
-│   ├── run.py                   # Application entry point
-│   ├── requirements.txt         # Python dependencies
-│   └── .env.example            # Environment variables template
+│   │   ├── __init__.py              # Flask app factory
+│   │   ├── config.py                # Dev / Prod config
+│   │   ├── extensions.py            # db, jwt, cors, migrate
+│   │   ├── api/
+│   │   │   ├── __init__.py          # Blueprint + API registration
+│   │   │   ├── auth.py              # /api/auth/*
+│   │   │   ├── events.py            # /api/events/*
+│   │   │   ├── registrations.py     # /api/registrations/*
+│   │   │   ├── payments.py          # /api/payments/*
+│   │   │   ├── organizer.py         # /api/organizer/*
+│   │   │   ├── admin.py             # /api/admin/*
+│   │   │   └── chatbot.py           # /api/chatbot/*
+│   │   ├── models/
+│   │   │   ├── user.py              # User model (3 roles)
+│   │   │   ├── event.py             # Event + computed KPIs
+│   │   │   ├── registration.py      # User ↔ Event link
+│   │   │   ├── payment.py           # Razorpay payment record
+│   │   │   └── escalation.py        # Chatbot escalation tickets
+│   │   ├── services/
+│   │   │   ├── recommendation.py    # Scored event recommendations
+│   │   │   ├── algolia_sync.py      # Search index sync
+│   │   │   ├── razorpay_service.py  # Payment order + verification
+│   │   │   └── chatbot_service.py   # FAQ + escalation logic
+│   │   └── utils/
+│   │       └── decorators.py        # role_required() RBAC decorator
+│   ├── tests/
+│   │   ├── test_app.py              # Basic smoke tests (3 tests)
+│   │   └── test_comprehensive.py    # Full CRUD tests, 47 tests
+│   ├── migrations/                  # Flask-Migrate DB migrations
+│   ├── seed_db.py                   # Seed demo users, events, payments
+│   ├── requirements.txt
+│   ├── run.py                       # Entry point → port 8000
+│   └── .env.example
 │
-├── frontend/                    # Vue 3 SPA (to be implemented)
-└── README.md                    # This file
+├── frontend/
+│   ├── src/
+│   │   ├── main.ts                  # Vue app entry
+│   │   ├── App.vue                  # Root component
+│   │   ├── router/                  # Vue Router (role-based guards)
+│   │   ├── stores/                  # Pinia state stores
+│   │   ├── views/                   # Page-level components
+│   │   └── components/              # Reusable UI components
+│   ├── index.html
+│   ├── vite.config.ts
+│   ├── tailwind.config.js
+│   └── package.json
+│
+└── README.md
 ```
 
-## Database Models
+---
 
-### User
-- Authentication with hashed passwords
-- Three roles: user, organizer, admin
-- City and budget preferences for recommendations
-- Preferred sports for personalization
+## 👥 User Roles
 
-### Event
-- Core event information (title, sport, location, date)
-- Pricing tiers (cheap, mid, premium)
-- Event tags (outdoor, team, night)
-- Computed properties: seats_remaining, fill_rate, performance_label
+| Role | Access |
+|------|--------|
+| **user** | Browse events, register & pay, view own registrations, cancel registrations, use chatbot |
+| **organizer** | All of above + Create / Edit / Delete own events, view organizer analytics dashboard |
+| **admin** | All platform access — view all analytics, delete any event, resolve escalation tickets |
 
-### Registration
-- Links users to events
-- Status tracking: pending, confirmed, cancelled
-- Audit trail with timestamps
+---
 
-### Payment
-- Razorpay integration with order tracking
-- Platform fees and organizer payouts
-- Payment status management
+## 🌐 API Endpoints
 
-## API Features
+All endpoints are prefixed with `/api`. Swagger UI available at **http://localhost:8000/api/docs**
 
-### Authentication (4 features)
-1. User registration
-2. Login with JWT token generation
-3. Token refresh
-4. Role-based access control
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/auth/register` | Public | Register new user or organizer |
+| POST | `/auth/login` | Public | Login → returns JWT token |
+| GET | `/auth/me` | Any role | Get own profile |
+| PUT | `/auth/me` | Any role | Update own profile |
+| GET | `/events` | Public | List recommended events |
+| POST | `/events` | Organizer | Create new event |
+| GET | `/events/<id>` | Public | Get event details |
+| PUT | `/events/<id>` | Organizer (own) | Update event |
+| DELETE | `/events/<id>` | Organizer/Admin | Soft-delete event |
+| GET | `/events/<id>/similar` | Public | Get similar events |
+| POST | `/registrations` | User | Register for an event |
+| GET | `/registrations/my` | User | View my registrations |
+| PUT | `/registrations/<id>/cancel` | User | Cancel a registration |
+| POST | `/payments/create-order` | User | Create Razorpay order |
+| POST | `/payments/verify` | User | Verify payment signature |
+| GET | `/organizer/dashboard` | Organizer | Event KPIs |
+| GET | `/organizer/trend/<event_id>` | Organizer | Daily registration trend |
+| GET | `/organizer/ticket-summary` | Organizer | Sales summary |
+| GET | `/organizer/category-insight` | Organizer | Registrations by sport |
+| POST | `/organizer/events/<id>/feature` | Organizer/Admin | Toggle featured status |
+| GET | `/admin/dashboard` | Admin | Platform-wide metrics |
+| GET | `/admin/popular-sport` | Admin | Most popular sports |
+| GET | `/admin/city-distribution` | Admin | Users by city |
+| GET | `/admin/fill-rate` | Admin | Event fill rates |
+| GET | `/admin/monthly-trend` | Admin | Monthly registrations |
+| GET | `/admin/organizer-performance` | Admin | Organizer comparison |
+| GET | `/admin/escalations` | Admin | Unresolved chatbot tickets |
+| PUT | `/admin/escalations/<id>/resolve` | Admin | Resolve a ticket |
+| POST | `/chatbot/message` | Any role | Send chatbot message |
 
-### Events & Recommendations (5 features)
-1. List recommended events with personalization
-2. Nearby events by city
-3. Upcoming events (7-day window)
-4. Budget filtering
-5. Similar events suggestions
+---
 
-### Payments (2 features)
-1. Razorpay order creation
-2. Webhook signature verification
-
-### Organizer Dashboard (5 features)
-8. Event list with KPIs
-9. Performance summary badges
-10. Registration trend graphs
-11. Category insights
-12. Ticket sales summary
-
-### Admin Analytics (5 features)
-13. Platform-wide analytics
-14. Popular sport categories
-15. User distribution by city
-16. Event fill-rate tracking
-17. Monthly registration trends
-18. Organizer performance comparison
-
-### AI Chatbot (1 feature)
-7. LangChain-powered FAQ assistant with context retrieval
-
-### Search (1 feature)
-6. Algolia full-text search with instant results
-
-## Setup Instructions
+## 🚀 Getting Started
 
 ### Prerequisites
-- Python 3.8+
-- PostgreSQL (for production) or SQLite (for development)
-- Node.js 16+ (for frontend)
-- Git
 
-### Backend Setup
+- **Python 3.8+** — [Download](https://www.python.org/downloads/)
+- **Node.js 18+** — [Download](https://nodejs.org/)
+- **Git** — [Download](https://git-scm.com/)
 
-```bash
-cd backend
+---
 
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Setup environment variables
-cp .env.example .env
-# Edit .env with your configuration
-
-# Initialize database
-flask db upgrade
-flask init-db
-
-# Run development server
-python run.py
-```
-
-Server will be available at http://localhost:5000
-
-### Frontend Setup (Coming Soon)
+### Step 1 — Clone the Repository
 
 ```bash
-cd frontend
-npm install
-npm run dev
+git clone https://github.com/<your-username>/SyntaxError.git
+cd SyntaxError
 ```
 
-## Environment Variables
+---
 
-Create a `.env` file in the backend directory:
+### Step 2 — Backend Setup
 
-```
-SECRET_KEY=your-secret-key
-DATABASE_URL=postgresql://user:password@localhost/sportsdb
-RAZORPAY_KEY_ID=your-razorpay-key
-RAZORPAY_KEY_SECRET=your-razorpay-secret
-ALGOLIA_APP_ID=your-algolia-app-id
-ALGOLIA_API_KEY=your-algolia-api-key
-OPENAI_API_KEY=your-openai-key
-GEMINI_API_KEY=your-gemini-key (optional)
-```
-
-## Release Timeline
-
-- **February 17, 2026**: MVP Release v1.0
-- **Sprint Duration**: 4 weeks
-- **18 Core Features**: Delivered across 4 sprints
-
-## Key Achievements
-
-✅ Complete Flask REST API with JWT authentication
-✅ SQLAlchemy database models with relationships
-✅ Multi-role authorization (user, organizer, admin)
-✅ Razorpay payment integration
-✅ Algolia search integration
-✅ LangChain chatbot with RAG
-✅ CORS-enabled for frontend integration
-✅ Comprehensive error handling
-✅ Database migration support
-
-## Next Steps
-
-1. Implement Vue 3 frontend with all features
-2. Complete API endpoints for all 18 features
-3. Add comprehensive test coverage
-4. Deploy to production (Render, AWS, or GCP)
-5. Setup CI/CD pipeline with GitHub Actions
-
-## License
-
-Confidential - For Internal Use Only (SE Team 026)
-
-## Contact
-
-For questions or issues, contact SE Team 026 (Syntax Error)
-Backend (Flask)
-The backend manages the database, search, and AI services.
-
-bash
+```bash
+# Navigate into the backend folder
 cd backend
+
+# (Recommended) Create a virtual environment
+python -m venv venv
+
+# Activate the virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
 source venv/bin/activate
-# Optional: Reset & seed the database
-# Start the server
-python run.py
-API URL: http://localhost:8000
-2. Frontend (Vue 3 + Vite)
-The frontend provides the user interface.
 
-bash
+# Install all Python dependencies
+pip install -r requirements.txt
+```
+
+---
+
+### Step 3 — Configure Environment Variables
+
+```bash
+# Copy the example env file
+cp .env.example .env
+```
+
+Then open `backend/.env` and fill in your values (see [Environment Variables](#-environment-variables) below). For local development the defaults work out of the box.
+
+---
+
+### Step 4 — Seed the Database
+
+This creates the SQLite database and populates it with demo users, events, and registrations:
+
+```bash
+python seed_db.py
+```
+
+You'll see output like:
+```
+Clearing database...
+Seeding Users...
+Seeding Events...
+Seeding Registrations & Payments...
+Database seeding complete!
+```
+
+---
+
+### Step 5 — Start the Backend Server
+
+```bash
+python run.py
+```
+
+✅ API is live at: **http://localhost:8000**  
+📄 Swagger UI at: **http://localhost:8000/api/docs**
+
+---
+
+### Step 6 — Frontend Setup
+
+Open a **new terminal** and run:
+
+```bash
 cd frontend
-# Install dependencies (if not already done)
-# Start development server
+
+# Install Node dependencies
+npm install
+
+# Start the development server
 npm run dev
-App URL: http://localhost:5173
+```
+
+✅ App is live at: **http://localhost:5173**
+
+---
+
+## 🔑 Environment Variables
+
+Create `backend/.env` with the following keys:
+
+```env
+# Flask
+FLASK_ENV=development
+SECRET_KEY=your-secret-key-here
+
+# Payments (Razorpay — test keys work fine for dev)
+RAZORPAY_KEY_ID=rzp_test_xxxxxxxx
+RAZORPAY_KEY_SECRET=your_razorpay_secret
+PLATFORM_FEE=0.15
+
+# Search (Algolia — optional, mocked without keys)
+ALGOLIA_APP_ID=XXXXXXXXXX
+ALGOLIA_API_KEY=your_algolia_admin_key
+ALGOLIA_INDEX=events
+
+# AI Chatbot (optional)
+OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=your-gemini-key
+```
+
+> **Note:** The app runs perfectly in development **without** Razorpay, Algolia, or AI keys. Those services are mocked gracefully when keys are missing.
+
+---
+
+## 🧪 Running Tests
+
+With the backend virtual environment active:
+
+```bash
+cd backend
+
+# Install pytest (one time)
+pip install pytest
+
+# Run all tests (50 tests)
+python -m pytest tests/ -v
+```
+
+Expected output:
+```
+tests/test_app.py::test_register_user              PASSED
+tests/test_app.py::test_login                      PASSED
+tests/test_app.py::test_admin_cannot_register_publicly PASSED
+tests/test_comprehensive.py::TestAuth ...          PASSED (10 tests)
+tests/test_comprehensive.py::TestEvents ...        PASSED (12 tests)
+tests/test_comprehensive.py::TestRegistrations ... PASSED (8 tests)
+tests/test_comprehensive.py::TestAdmin ...         PASSED (10 tests)
+tests/test_comprehensive.py::TestOrganizer ...     PASSED (7 tests)
+
+========= 50 passed =========
+```
+
+---
+
+## 🌱 Seed Data (Demo Users)
+
+After running `python seed_db.py`, the following accounts are available:
+
+| Name | Email | Password | Role |
+|------|-------|----------|------|
+| Admin Boss | `admin@example.com` | `123456` | admin |
+| Sports Authority | `org1@example.com` | `123456` | organizer |
+| Active Life Org | `org2@example.com` | `123456` | organizer |
+| Rahul Sharma | `user1@example.com` | `123456` | user |
+| Priya Patel | `user2@example.com` | `123456` | user |
+
+**Seeded Events:**
+- 🏃 Delhi Monsoon Marathon (Running, ₹500)
+- ⚽ Corporate Football League (Football, ₹2500)
+- 🚴 Mumbai Midnight Cycling (Cycling, ₹300)
+- 🎾 Pro Tennis Workshop (Tennis, ₹5000)
+
+---
+
+## 📝 License
+
+Confidential — For Internal Use Only (SE Team 026 — Syntax Error)
