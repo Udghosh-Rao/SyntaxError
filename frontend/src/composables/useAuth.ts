@@ -6,10 +6,7 @@ interface User {
   value: string | null;
 }
 
-interface ApiResponse {
-  success: boolean;
-  data?: any;
-}
+// ApiResponse interface removed
 
 const user = ref<User>({
   value: null,
@@ -26,19 +23,20 @@ export const useAuth = () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await userApi.login({
+      const { data: response } = await userApi.login({
         username,
         password,
       });
-      if (response.success) {
-        user.value = response.data;
-        localStorage.setItem('auth_token', response.data.token);
-        router.push('/dashboard');
+      // Backend returns { access_token, role }
+      if (response.access_token) {
+        user.value = { value: response.role }; // or actual user data if available
+        localStorage.setItem('auth_token', response.access_token);
+        router.push(response.role === 'admin' ? '/admin' : (response.role === 'organizer' ? '/organizer' : '/home'));
       } else {
-        error.value = response.error || 'Login failed';
+        error.value = 'Login failed';
       }
     } catch (err: any) {
-      error.value = err.message || 'An error occurred during login';
+      error.value = err.response?.data?.message || err.message || 'An error occurred during login';
     } finally {
       isLoading.value = false;
     }
@@ -48,16 +46,16 @@ export const useAuth = () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await userApi.register(userData);
-      if (response.success) {
-        user.value = response.data;
-        localStorage.setItem('auth_token', response.data.token);
-        router.push('/dashboard');
+      const { data: response } = await userApi.register(userData);
+      if (response.access_token) {
+        user.value = { value: response.role || 'user' };
+        localStorage.setItem('auth_token', response.access_token);
+        router.push('/home');
       } else {
-        error.value = response.error || 'Registration failed';
+        error.value = 'Registration failed';
       }
     } catch (err: any) {
-      error.value = err.message || 'An error occurred during registration';
+      error.value = err.response?.data?.message || err.message || 'An error occurred during registration';
     } finally {
       isLoading.value = false;
     }
@@ -65,7 +63,7 @@ export const useAuth = () => {
 
   const logout = () => {
     localStorage.removeItem('auth_token');
-    user.value = null;
+    user.value = { value: null };
     router.push('/login');
   };
 
@@ -73,9 +71,9 @@ export const useAuth = () => {
     const token = localStorage.getItem('auth_token');
     if (token) {
       try {
-        const response = await userApi.getProfile();
-        if (response.success && response.data) {
-          user.value = response.data;
+        const { data: response } = await userApi.getProfile();
+        if (response) {
+          user.value = { value: response.role || 'user' };
         } else {
           logout();
         }

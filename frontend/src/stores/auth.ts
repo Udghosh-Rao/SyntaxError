@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/auth';
+import { userApi } from '@/services/api';
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('auth_token'));
@@ -24,7 +22,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await axios.post(`${API_URL}/register`, userData);
+      const response = await userApi.register(userData);
       token.value = response.data.access_token;
 
       // role defaults to 'user' in backend if not explicitly organizer
@@ -38,7 +36,6 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('user_id', response.data.user_id);
       }
 
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
       return response.data;
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Registration failed';
@@ -52,14 +49,12 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await axios.post(`${API_URL}/login`, { email, password });
+      const response = await userApi.login({ email, password });
       token.value = response.data.access_token;
       role.value = response.data.role;
 
       localStorage.setItem('auth_token', response.data.access_token);
       localStorage.setItem('user_role', response.data.role);
-
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
 
       // Fetch profile data after login
       await fetchProfile();
@@ -75,7 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const fetchProfile = async () => {
     try {
-      const res = await axios.get(`${API_URL}/me`);
+      const res = await userApi.getProfile();
       userObj.value = res.data;
       userId.value = res.data.id;
       localStorage.setItem('user_id', res.data.id);
@@ -92,7 +87,6 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_id');
     localStorage.removeItem('user_role');
-    delete axios.defaults.headers.common['Authorization'];
   };
 
   const initializeAuth = () => {
@@ -101,7 +95,6 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = storedToken;
       userId.value = localStorage.getItem('user_id');
       role.value = localStorage.getItem('user_role');
-      axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
     }
   };
 

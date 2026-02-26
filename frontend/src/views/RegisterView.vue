@@ -5,31 +5,31 @@
         <div class="absolute inset-0 bg-gradient-to-br from-[#00f3ff]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
         <div class="auth-header mb-10 text-center relative z-10">
           <span class="badge-corp bg-[#00f3ff]/10 text-[#00f3ff] border-[#00f3ff]/20">New Arrival</span>
-          <h1 class="hero-title-small mt-4 text-white font-900 tracking-tight">Join the Party</h1>
-          <p class="text-dim mt-2 font-500">Create your account to start booking massive gigs.</p>
+          <h1 class="hero-title-small mt-4 text-white font-900 tracking-tight">Join the Platform</h1>
+          <p class="text-dim mt-2 font-500">Create your account to start booking massive events.</p>
         </div>
         
         <form @submit.prevent="handleRegister" class="auth-form-grid relative z-10 w-full">
           <div class="input-stack mb-6">
-            <label class="label-muted text-[10px] tracking-widest text-[#00f3ff] mb-2">Display Name</label>
-            <input v-model="form.name" type="text" class="input-corp bg-black/60 border-white/10 focus:border-[#00f3ff] focus:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all" placeholder="Party Goer Name" required />
+            <label class="block text-xs font-bold tracking-widest text-[#00f3ff] mb-2 uppercase">Display Name</label>
+            <input v-model="form.name" type="text" class="input-corp w-full px-4 py-3 rounded-xl text-white placeholder-white/40 bg-black/60 border border-white/20 focus:outline-none focus:border-[#00f3ff] focus:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all" placeholder="Display Name" required />
           </div>
           
           <div class="input-stack mb-6">
-            <label class="label-muted text-[10px] tracking-widest text-[#00f3ff] mb-2">Email</label>
-            <input v-model="form.email" type="email" class="input-corp bg-black/60 border-white/10 focus:border-[#00f3ff] focus:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all" placeholder="name@party.live" required />
+            <label class="block text-xs font-bold tracking-widest text-[#00f3ff] mb-2 uppercase">Email</label>
+            <input v-model="form.email" type="email" class="input-corp w-full px-4 py-3 rounded-xl text-white placeholder-white/40 bg-black/60 border border-white/20 focus:outline-none focus:border-[#00f3ff] focus:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all" placeholder="name@sport.live" required />
           </div>
           
           <div class="input-stack mb-6">
-            <label class="label-muted text-[10px] tracking-widest text-[#00f3ff] mb-2">Password</label>
-            <input v-model="form.password" type="password" class="input-corp bg-black/60 border-white/10 focus:border-[#00f3ff] focus:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all" placeholder="••••••••" required />
+            <label class="block text-xs font-bold tracking-widest text-[#00f3ff] mb-2 uppercase">Password</label>
+            <input v-model="form.password" type="password" class="input-corp w-full px-4 py-3 rounded-xl text-white placeholder-white/40 bg-black/60 border border-white/20 focus:outline-none focus:border-[#00f3ff] focus:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all" placeholder="••••••••" required />
           </div>
           
           <div class="input-stack mb-6">
-            <label class="label-muted text-[10px] tracking-widest text-[#ff007f] mb-2">Your Vibe</label>
-            <select v-model="form.role" class="input-corp bg-black/60 border-white/10 focus:border-[#ff007f] focus:shadow-[0_0_15px_rgba(255,0,127,0.2)] transition-all">
-              <option value="user">Attending Shows</option>
-              <option value="organizer">Hosting Gigs (Vendor)</option>
+            <label class="block text-xs font-bold tracking-widest text-[#ff007f] mb-2 uppercase">Your Role</label>
+            <select v-model="form.role" class="input-corp w-full px-4 py-3 rounded-xl text-white bg-black/60 border border-white/20 focus:outline-none focus:border-[#ff007f] focus:shadow-[0_0_15px_rgba(255,0,127,0.2)] transition-all appearance-none cursor-pointer">
+              <option value="user" class="bg-gray-900 text-white">Participating in Events</option>
+              <option value="organizer" class="bg-gray-900 text-white">Hosting Events (Organizer)</option>
             </select>
           </div>
 
@@ -38,15 +38,15 @@
               <p class="label-muted mb-6 text-[#00f3ff]">Local Scene</p>
               
               <div class="input-stack">
-                <label class="label-muted text-[10px] tracking-widest text-white/50 mb-2">Home City</label>
-                <input v-model="form.city" type="text" class="input-corp bg-black/40 border-white/10 focus:border-[#00f3ff]" placeholder="e.g. Mumbai" />
+                <label class="block text-xs font-bold tracking-widest text-white/70 mb-2 uppercase">Home City</label>
+                <input v-model="form.city" type="text" class="input-corp w-full px-4 py-3 rounded-xl text-white placeholder-white/40 bg-black/40 border border-white/20 focus:outline-none focus:border-[#00f3ff]" placeholder="e.g. Mumbai" />
               </div>
               <div class="input-stack mt-6">
-                <label class="label-muted text-[10px] tracking-widest text-white/50 mb-2">Ticket Preference</label>
-                <select v-model="form.budget_preference" class="input-corp bg-black/40 border-white/10 focus:border-[#00f3ff]">
-                  <option value="cheap">General Admission (&lt; ₹500)</option>
-                  <option value="mid">VIP Access (₹500 - ₹2000)</option>
-                  <option value="premium">Backstage Pass (&gt; ₹2000)</option>
+                <label class="block text-xs font-bold tracking-widest text-white/70 mb-2 uppercase">Ticket Preference</label>
+                <select v-model="form.budget_preference" class="input-corp w-full px-4 py-3 rounded-xl text-white bg-black/40 border border-white/20 focus:outline-none focus:border-[#00f3ff] appearance-none cursor-pointer">
+                  <option value="cheap" class="bg-gray-900 text-white">General Admission (&lt; ₹500)</option>
+                  <option value="mid" class="bg-gray-900 text-white">VIP Access (₹500 - ₹2000)</option>
+                  <option value="premium" class="bg-gray-900 text-white">Backstage Pass (&gt; ₹2000)</option>
                 </select>
               </div>
           </div>

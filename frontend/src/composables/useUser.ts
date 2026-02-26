@@ -22,11 +22,11 @@ export const useUser = () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await userApi.getAllUsers();
-      if (response.success) {
-        users.value = response.data;
+      const { data: response } = await userApi.getAllUsers();
+      if (response) {
+        users.value = response;
       } else {
-        error.value = response.error || 'Failed to fetch users';
+        error.value = 'Failed to fetch users';
       }
     } catch (err: any) {
       error.value = err.message || 'An error occurred while fetching users';
@@ -39,11 +39,11 @@ export const useUser = () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await userApi.getUserById(id);
-      if (response.success) {
-        selectedUser.value = response.data;
+      const { data: response } = await userApi.getUserById(id);
+      if (response) {
+        selectedUser.value = response;
       } else {
-        error.value = response.error || 'Failed to fetch user';
+        error.value = 'Failed to fetch user';
       }
     } catch (err: any) {
       error.value = err.message || 'An error occurred while fetching the user';
@@ -56,17 +56,17 @@ export const useUser = () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await userApi.updateUser(id, userData);
-      if (response.success) {
+      const { data: response } = await userApi.updateUser(id, userData);
+      if (response) {
         const index = users.value.findIndex(u => u.id === id);
         if (index !== -1) {
-          users.value[index] = response.data;
+          users.value[index] = response;
         }
         if (selectedUser.value?.id === id) {
-          selectedUser.value = response.data;
+          selectedUser.value = response;
         }
       } else {
-        error.value = response.error || 'Failed to update user';
+        error.value = 'Failed to update user';
       }
     } catch (err: any) {
       error.value = err.message || 'An error occurred while updating the user';
@@ -79,14 +79,14 @@ export const useUser = () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await userApi.deleteUser(id);
-      if (response.success) {
+      const { data: response } = await userApi.deleteUser(id);
+      if (response) {
         users.value = users.value.filter(u => u.id !== id);
         if (selectedUser.value?.id === id) {
           selectedUser.value = null;
         }
       } else {
-        error.value = response.error || 'Failed to delete user';
+        error.value = 'Failed to delete user';
       }
     } catch (err: any) {
       error.value = err.message || 'An error occurred while deleting the user';
@@ -99,8 +99,8 @@ export const useUser = () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await userApi.assignRole(id, role);
-      if (response.success) {
+      const { data: response } = await userApi.assignRole(id, role);
+      if (response) {
         const index = users.value.findIndex(u => u.id === id);
         if (index !== -1) {
           users.value[index].role = role;
@@ -109,7 +109,7 @@ export const useUser = () => {
           selectedUser.value.role = role;
         }
       } else {
-        error.value = response.error || 'Failed to assign role';
+        error.value = 'Failed to assign role';
       }
     } catch (err: any) {
       error.value = err.message || 'An error occurred while assigning the role';

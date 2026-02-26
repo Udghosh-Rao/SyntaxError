@@ -70,7 +70,7 @@ const simulateSuccess = async () => {
     };
 
     const response = await axios.post(
-      'http://localhost:8000/api/payments/verify', 
+      '/api/payments/verify', 
       mockPayload,
       { headers: { Authorization: `Bearer ${authStore.token}` } }
     );

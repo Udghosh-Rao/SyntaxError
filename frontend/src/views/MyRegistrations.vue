@@ -63,32 +63,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import axios from 'axios';
-import { useAuthStore } from '../stores/auth';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { registrationApi } from '../services/api';
 
-const authStore = useAuthStore();
 const registrations = ref<any[]>([]);
 const loading = ref(true);
 const error = ref('');
+let pollInterval: any;
 
-const fetchRegistrations = async () => {
-  loading.value = true;
+const fetchRegistrations = async (isPolling = false) => {
+  if (!isPolling) loading.value = true;
   try {
-    const res = await axios.get('http://localhost:8000/api/registrations/my', {
-      headers: { Authorization: `Bearer ${authStore.token}` }
-    });
+    const res = await registrationApi.getMy();
     registrations.value = res.data;
   } catch (err) {
     console.error(err);
-    error.value = 'Failed to load registrations.';
+    if (!isPolling) error.value = 'Failed to load registrations.';
   } finally {
-    loading.value = false;
+    if (!isPolling) loading.value = false;
   }
 };
 
 onMounted(() => {
   fetchRegistrations();
+  pollInterval = setInterval(() => {
+    fetchRegistrations(true);
+  }, 30000);
+});
+
+onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval);
 });
 </script>
 

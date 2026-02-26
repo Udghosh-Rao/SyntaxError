@@ -99,7 +99,7 @@ const sendMessage = async () => {
         : {};
 
     const res = await axios.post(
-      'http://localhost:8000/api/chatbot',
+      '/api/chatbot',
       { message: txt },
       config
     );

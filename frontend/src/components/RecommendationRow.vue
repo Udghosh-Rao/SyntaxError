@@ -53,9 +53,9 @@ onMounted(async () => {
       ? { headers: { Authorization: `Bearer ${authStore.token}` } } 
       : {};
       
-    let url = 'http://localhost:8000/api/events';
+    let url = '/api/events';
     if (props.eventId) {
-      url = `http://localhost:8000/api/events/${props.eventId}/similar`;
+      url = `/api/events/${props.eventId}/similar`;
     }
 
     const res = await axios.get(url, config);
@@ -85,7 +85,7 @@ onMounted(async () => {
 
 .header h2 {
   font-size: 0.8rem;
-  color: var(--text-dim);
+  color: rgba(255,255,255,0.5);
   text-transform: uppercase;
   letter-spacing: 0.2em;
   font-weight: 800;
@@ -93,8 +93,8 @@ onMounted(async () => {
 }
 
 .personalization-badge {
-  background: rgba(0, 112, 243, 0.1);
-  color: var(--brand-primary);
+  background: rgba(204, 255, 0, 0.1);
+  color: #ccff00;
   padding: 0.35rem 0.85rem;
   border-radius: var(--radius-pill);
   font-size: 0.7rem;
@@ -104,13 +104,15 @@ onMounted(async () => {
   gap: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border: 1px solid rgba(0, 112, 243, 0.2);
+  border: 1px solid rgba(204, 255, 0, 0.2);
+  box-shadow: 0 0 10px rgba(204, 255, 0, 0.1);
 }
 
 .personalization-badge.public {
-  background: rgba(255, 171, 0, 0.1);
-  color: #ffab00;
-  border: 1px solid rgba(255, 171, 0, 0.2);
+  background: rgba(0, 243, 255, 0.1);
+  color: #00f3ff;
+  border: 1px solid rgba(0, 243, 255, 0.2);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.1);
 }
 
 .scroll-container {

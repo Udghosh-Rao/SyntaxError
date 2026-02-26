@@ -22,8 +22,24 @@ const renderChart = () => {
     chartInstance.destroy();
   }
 
-  const labels = props.data.map(d => new Date(d.day).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-  const counts = props.data.map(d => d.count);
+  // Generate continuous 90-day timeline
+  const today = new Date();
+  const timeline = Array.from({length: 90}, (_, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - (89 - i));
+    return d;
+  });
+
+  const dataMap = new Map();
+  props.data.forEach(d => {
+    dataMap.set(new Date(d.day).toISOString().split('T')[0], d.count);
+  });
+
+  const labels = timeline.map(d => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+  const counts = timeline.map(d => {
+    const key = d.toISOString().split('T')[0];
+    return dataMap.get(key) || 0;
+  });
 
   chartInstance = new Chart(chartCanvas.value, {
     type: 'line',

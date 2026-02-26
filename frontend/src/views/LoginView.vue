@@ -4,20 +4,20 @@
       <div class="card-premium auth-card animate-corp relative overflow-hidden group">
         <div class="absolute inset-0 bg-gradient-to-br from-[#ff007f]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
         <div class="auth-header mb-10 text-center relative z-10">
-          <span class="badge-corp bg-[#ff007f]/10 text-[#ff007f] border-[#ff007f]/20">VIP Access</span>
-          <h1 class="hero-title-small mt-4 text-white font-900 tracking-tight">Guest List Login</h1>
-          <p class="text-dim mt-2 font-500">Sign in to unlock massive events and manage your shows.</p>
+          <span class="badge-corp bg-[#ff007f]/10 text-[#ff007f] border-[#ff007f]/20">Verified Access</span>
+          <h1 class="hero-title-small mt-4 text-white font-900 tracking-tight">Athlete Login</h1>
+          <p class="text-dim mt-2 font-500">Sign in to unlock massive events and manage your tournaments.</p>
         </div>
         
         <form @submit.prevent="handleLogin" class="auth-form relative z-10 w-full">
           <div class="input-stack mb-6">
-            <label class="label-muted text-[10px] tracking-widest text-[#00f3ff] mb-2">Email</label>
-            <input v-model="email" type="email" class="input-corp bg-black/60 border-white/10 focus:border-[#00f3ff] focus:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all" placeholder="name@party.live" required />
+            <label class="block text-xs font-bold tracking-widest text-[#00f3ff] mb-2 uppercase">Email</label>
+            <input v-model="email" type="email" class="input-corp w-full px-4 py-3 rounded-xl text-white placeholder-white/40 bg-black/60 border border-white/20 focus:outline-none focus:border-[#00f3ff] focus:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all" placeholder="name@sport.live" required />
           </div>
           
           <div class="input-stack mb-6">
-            <label class="label-muted text-[10px] tracking-widest text-[#00f3ff] mb-2">Password</label>
-            <input v-model="password" type="password" class="input-corp bg-black/60 border-white/10 focus:border-[#00f3ff] focus:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all" placeholder="••••••••" required />
+            <label class="block text-xs font-bold tracking-widest text-[#00f3ff] mb-2 uppercase">Password</label>
+            <input v-model="password" type="password" class="input-corp w-full px-4 py-3 rounded-xl text-white placeholder-white/40 bg-black/60 border border-white/20 focus:outline-none focus:border-[#00f3ff] focus:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all" placeholder="••••••••" required />
           </div>
           
           <div v-if="error" class="error-panel-inline mt-4 animate-corp bg-[#ff007f]/10 border-[#ff007f]/20 text-[#ff007f]">
@@ -31,7 +31,7 @@
         </form>
         
         <div class="auth-footer mt-12 text-center pt-8 border-t relative z-10 border-white/10">
-          <p class="text-white/60 text-sm">Not on the list? <router-link to="/register" class="link-corp text-[#00f3ff] ml-2 font-900 hover:text-white transition-colors">Join the Party</router-link></p>
+          <p class="text-white/60 text-sm">Not on the list? <router-link to="/register" class="link-corp text-[#00f3ff] ml-2 font-900 hover:text-white transition-colors">Join the Platform</router-link></p>
         </div>
       </div>
     </div>

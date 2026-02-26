@@ -26,6 +26,7 @@ class OrganizerDashboard(Resource):
             'venue_city': e.venue_city,
             'registrations': e.seats_sold,
             'seats_remaining': e.seats_remaining,
+            'capacity': e.capacity,
             'revenue': e.revenue,
             'fill_rate': e.fill_rate,
             'performance_label': e.performance_label,
@@ -106,4 +107,8 @@ class FeatureEvent(Resource):
         db.session.commit()
         AlgoliaSyncService().index_event(event)
         
-        return {'message': 'Event feature status toggled', 'is_featured': event.is_featured}, 200
+        return {
+            'message': 'Event feature status toggled', 
+            'is_featured': event.is_featured,
+            'snapshot_registrations': event.seats_sold
+        }, 200

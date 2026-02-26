@@ -1,178 +1,135 @@
 <template>
-  <div class="landing-page">
-    <section class="hero-v3 relative overflow-hidden">
-      <!-- Added a localized glowing stage light effect -->
-      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-4xl bg-[radial-gradient(ellipse_at_top,_var(--brand-glow),_transparent_70%)] opacity-30 mix-blend-screen pointer-events-none"></div>
+  <div class="min-h-screen bg-black text-white relative flex flex-col selection:bg-[#ccff00] selection:text-black">
+    <!-- Cinematic Fixed Background -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+      <img src="/stadium-hero.png" alt="Stadium" class="w-full h-full object-cover object-top opacity-50" />
+      <div class="absolute inset-0 bg-gradient-to-b from-black/90 via-black/40 to-black"></div>
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,black_100%)] opacity-80"></div>
+    </div>
 
-      <div class="container text-center animate-corp relative z-10">
-        <span class="badge-corp backdrop-blur-md bg-black/40 border-[var(--brand-primary)]/30 text-[var(--brand-primary)]">The Ultimate Gig Platform</span>
-        <h1 class="hero-main-title delay-100 text-5xl md:text-7xl font-900 tracking-tighter mt-6">
-          Book The Best <br/> <span class="text-gradient">Live Shows.</span>
+    <!-- Hero Section -->
+    <div class="relative z-10 pt-40 pb-32 overflow-hidden flex-1 flex flex-col justify-center">
+      <!-- Ambient Central Glow -->
+      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#ccff00] rounded-full blur-[150px] opacity-[0.08] pointer-events-none"></div>
+      
+      <div class="container mx-auto px-6 max-w-5xl text-center relative z-20">
+        <!-- Badge -->
+        <div class="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-2xl shadow-2xl hover:bg-white/10 hover:border-white/20 transition-all duration-300 mb-12">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ccff00] opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-[#ccff00]"></span>
+          </span>
+          <span class="text-xs font-bold tracking-[0.2em] text-white/90 uppercase">The Ultimate Sports Platform</span>
+        </div>
+        
+        <!-- Headline -->
+        <h1 class="text-7xl sm:text-8xl md:text-[9rem] font-black text-white tracking-tighter leading-[0.9] mb-10 drop-shadow-2xl">
+          Experience The <br/>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#ccff00] via-[#00f3ff] to-[#ccff00] bg-[length:200%_auto] animate-gradient-x filter drop-shadow-[0_0_20px_rgba(204,255,0,0.2)]">Best Events.</span>
         </h1>
-        <p class="hero-description delay-200 text-lg text-white/70 max-w-2xl mx-auto mt-6 mb-10">
-          The easiest way to organize, discover, and drop into the biggest parties and live events. Scale your gigs, manage guest lists, and ignite the dance floor.
+        
+        <!-- Subheadline -->
+        <p class="text-xl md:text-2xl text-white/60 font-medium max-w-3xl mx-auto leading-relaxed mb-14 drop-shadow-lg">
+          Discover massive sports tournaments, secure your tickets instantly, and experience the hype. Your front-row seat to the action starts right here.
         </p>
-        <div class="hero-actions delay-300 flex justify-center gap-4">
-          <router-link to="/register" class="btn-corp bg-[var(--brand-primary)] text-black hover:bg-white hover:shadow-[0_0_30px_var(--brand-glow)] hover:-translate-y-1 transition-all duration-300 font-900 px-8 py-4 text-sm">
-            Join The Party
+        
+        <!-- Call to Actions -->
+        <div class="flex flex-col sm:flex-row justify-center gap-6 items-center">
+          <router-link to="/register" class="group relative px-12 py-5 bg-[#ccff00] text-black font-black text-xl rounded-full overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_40px_rgba(204,255,0,0.3)] hover:shadow-[0_0_60px_rgba(204,255,0,0.5)]">
+            <div class="absolute inset-0 bg-white/40 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+            <span class="relative z-10 flex items-center gap-3">
+              Sign Up
+              <svg class="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </span>
           </router-link>
-          <router-link to="/login" class="btn-corp btn-corp-outline border-white/20 hover:border-white hover:bg-white/10 px-8 py-4 text-sm font-800 backdrop-blur-sm">
-            Guest List
+          
+          <router-link to="/login" class="group relative px-12 py-5 bg-white/5 backdrop-blur-2xl border border-white/10 text-white font-bold text-xl rounded-full transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-[1.02] active:scale-[0.98] shadow-2xl">
+             <span class="relative z-10 flex items-center gap-3">
+               Login
+               <span class="opacity-70 group-hover:opacity-100 group-hover:text-[#ccff00] transition-all">👋</span>
+             </span>
           </router-link>
         </div>
       </div>
-    </section>
-
-    <section class="section-spacer relative">
-      <div class="container relative z-10">
-        <div class="section-header text-center animate-corp">
-          <h2 class="section-title-large text-4xl font-900 tracking-tight">The VIP Experience</h2>
-          <p class="section-subtitle mt-2 text-[var(--text-muted)] uppercase tracking-widest text-sm font-800">Everything you need to run a massive night</p>
+    </div>
+    
+    <!-- Content Section -->
+    <div class="relative z-20 bg-black/80 backdrop-blur-3xl border-t border-white/5 pt-32 pb-24">
+      <div class="container mx-auto px-6 max-w-7xl">
+        
+        <!-- Experience Header -->
+        <div class="text-center mb-24">
+          <h2 class="text-5xl md:text-6xl font-black tracking-tighter text-white mb-6">Your Ticket To The Action</h2>
+          <p class="text-[#00f3ff] uppercase tracking-[0.3em] text-sm font-black">Everything you need to enjoy the best sports events</p>
         </div>
 
-        <div class="capabilities-grid mt-20">
-          <div class="card-premium cap-card animate-corp delay-100 hover:border-[var(--brand-primary)]/50 transition-all shadow-luxury relative overflow-hidden group">
-            <div class="absolute inset-0 bg-gradient-to-br from-[var(--brand-primary)]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div class="cap-icon-box relative z-10 flex border border-[var(--brand-primary)]/30 bg-[var(--brand-primary)]/5 rounded-2xl w-14 h-14 items-center justify-center mb-6">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        <!-- Capabilities Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-32">
+          <!-- Card 1 -->
+          <div class="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-2xl hover:bg-white/10 hover:border-[#ccff00]/30 hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden flex flex-col text-center">
+            <div class="absolute inset-0 bg-gradient-to-br from-[#ccff00]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div class="w-full h-48 rounded-2xl bg-black/50 border border-white/5 overflow-hidden mb-8 group-hover:shadow-[0_0_20px_rgba(204,255,0,0.2)] transition-all duration-500 shadow-xl relative isolate">
+              <img src="/football.png" alt="Football Pitch" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
             </div>
-            <h3 class="relative z-10 text-white font-900 text-xl tracking-tight mb-3">Gig Management</h3>
-            <p class="relative z-10 text-white/60 leading-relaxed font-500">Easily manage your lineups, venues, and set times from a single unified dashboard.</p>
+            <h3 class="text-2xl font-black mb-4 text-white tracking-tight relative z-10">Massive Tournaments</h3>
+            <p class="text-white/60 leading-relaxed font-medium text-base relative z-10">Gain access to the most exclusive football tournaments and massive stadium events across the city.</p>
           </div>
           
-          <div class="card-premium cap-card animate-corp delay-200 hover:border-[var(--brand-secondary)]/50 transition-all shadow-luxury relative overflow-hidden group">
-            <div class="absolute inset-0 bg-gradient-to-br from-[var(--brand-secondary)]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-             <div class="cap-icon-box relative z-10 flex border border-[var(--brand-secondary)]/30 bg-[var(--brand-secondary)]/5 rounded-2xl w-14 h-14 items-center justify-center mb-6">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand-secondary)" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <!-- Card 2 -->
+          <div class="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-2xl hover:bg-white/10 hover:border-[#00f3ff]/30 hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden flex flex-col text-center">
+            <div class="absolute inset-0 bg-gradient-to-br from-[#00f3ff]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div class="w-full h-48 rounded-2xl bg-black/50 border border-white/5 overflow-hidden mb-8 group-hover:shadow-[0_0_20px_rgba(0,243,255,0.2)] transition-all duration-500 shadow-xl relative isolate">
+              <img src="/basketball.png" alt="Basketball Court" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
             </div>
-            <h3 class="relative z-10 text-white font-900 text-xl tracking-tight mb-3">Hype Analytics</h3>
-            <p class="relative z-10 text-white/60 leading-relaxed font-500">Track your ticket sales, drops, and audience engagement with live data streams.</p>
+            <h3 class="text-2xl font-black mb-4 text-white tracking-tight relative z-10">Instant Ticketing</h3>
+            <p class="text-white/60 leading-relaxed font-medium text-base relative z-10">Secure your spot instantly with our seamless digital ticketing system. No lines, no hassle.</p>
           </div>
 
-          <div class="card-premium cap-card animate-corp delay-300 hover:border-[var(--brand-accent)]/50 transition-all shadow-luxury relative overflow-hidden group">
-            <div class="absolute inset-0 bg-gradient-to-br from-[var(--brand-accent)]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div class="cap-icon-box relative z-10 flex border border-[var(--brand-accent)]/30 bg-[var(--brand-accent)]/5 rounded-2xl w-14 h-14 items-center justify-center mb-6">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand-accent)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+           <!-- Card 3 -->
+          <div class="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-2xl hover:bg-white/10 hover:border-[#ccff00]/30 hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden flex flex-col text-center">
+            <div class="absolute inset-0 bg-gradient-to-br from-[#ccff00]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div class="w-full h-48 rounded-2xl bg-black/50 border border-white/5 overflow-hidden mb-8 group-hover:shadow-[0_0_20px_rgba(204,255,0,0.2)] transition-all duration-500 shadow-xl relative isolate">
+              <img src="/cricket.png" alt="Cricket Pitch" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
             </div>
-            <h3 class="relative z-10 text-white font-900 text-xl tracking-tight mb-3">Secure Entry</h3>
-            <p class="relative z-10 text-white/60 leading-relaxed font-500">Automated access control so you can keep the lines moving and the fake tickets out.</p>
+            <h3 class="text-2xl font-black mb-4 text-white tracking-tight relative z-10">Pure Hype</h3>
+            <p class="text-white/60 leading-relaxed font-medium text-base relative z-10">Experience the energy of live sports. From boundary side seats to VIP access, we bring you closer.</p>
           </div>
         </div>
-      </div>
-    </section>
 
-    <section class="section-spacer">
-      <div class="container">
-        <div class="portal-grid">
-          <div class="card-premium portal-card-v2 animate-corp hover:border-[#00f3ff]/50 transition-all shadow-luxury relative overflow-hidden group">
-            <div class="absolute inset-0 bg-gradient-to-br from-[#00f3ff]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div class="portal-header relative z-10 flex items-center justify-between mb-4">
-              <span class="badge-corp bg-[#00f3ff]/10 text-[#00f3ff] border-[#00f3ff]/20">Party Goers</span>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-secondary)" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <!-- Single Focused CTA -->
+        <div class="max-w-4xl mx-auto">
+          <div class="bg-gradient-to-br from-[#ccff00]/10 to-transparent border border-[#ccff00]/20 rounded-[2.5rem] p-12 md:p-16 relative overflow-hidden group hover:border-[#ccff00]/40 transition-all duration-500 backdrop-blur-3xl flex flex-col items-center text-center">
+            <div class="absolute top-0 right-0 w-96 h-96 bg-[#ccff00] rounded-full mix-blend-screen blur-[120px] opacity-10 group-hover:opacity-20 transition-opacity duration-500"></div>
+            <div class="flex items-center justify-center mb-8 relative z-10">
+              <span class="bg-[#ccff00]/10 text-[#ccff00] border border-[#ccff00]/20 font-black tracking-[0.2em] px-6 py-3 uppercase text-sm rounded-full shadow-[0_0_20px_rgba(204,255,0,0.2)]">Don't Miss Out 🔥</span>
             </div>
-            <h3 class="text-white font-900 text-2xl mb-2 relative z-10">Get on the List</h3>
-            <p class="relative z-10 text-white/60 flex-grow leading-relaxed">Find massive events, secure your tickets instantly, and never miss a beat.</p>
-            <router-link to="/login" class="btn-corp bg-[#00f3ff] text-black w-full mt-8 relative z-10 hover:bg-white hover:shadow-[0_0_20px_rgba(0,243,255,0.4)] px-4 py-3 font-900 text-sm flex justify-between items-center transition-all duration-300">
-              <span>Grab Tickets</span>
-              <span>&rarr;</span>
-            </router-link>
-          </div>
-          
-          <div class="card-premium portal-card-v2 animate-corp delay-100 hover:border-[#ff007f]/50 transition-all shadow-luxury relative overflow-hidden group">
-             <div class="absolute inset-0 bg-gradient-to-br from-[#ff007f]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div class="portal-header relative z-10 flex items-center justify-between mb-4">
-              <span class="badge-corp bg-[#ff007f]/10 text-[#ff007f] border-[#ff007f]/20">Gig Vendors</span>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-            </div>
-            <h3 class="text-white font-900 text-2xl mb-2 relative z-10">Host the Show</h3>
-            <p class="relative z-10 text-white/60 flex-grow leading-relaxed">Drop your event details, manage your ticket sales, and pack the venue.</p>
-            <router-link to="/login" class="btn-corp btn-corp-outline w-full mt-8 relative z-10 border-[#ff007f] text-[#ff007f] hover:bg-[#ff007f] hover:text-black hover:shadow-[0_0_20px_rgba(255,0,127,0.4)] px-4 py-3 font-900 text-sm flex justify-between items-center transition-all duration-300 backdrop-blur-sm">
-              <span>Vendor Dashboard</span>
-              <span>&rarr;</span>
+            <h3 class="font-black text-5xl md:text-7xl mb-8 text-white relative z-10 tracking-tighter leading-tight drop-shadow-2xl">Secure Your Spot <br/> Today</h3>
+            <p class="text-white/60 font-medium leading-relaxed relative z-10 text-xl max-w-2xl mx-auto mb-14 drop-shadow-md">Create an account right now to browse upcoming tournaments, book your tickets, and experience the hype of live sports.</p>
+            <router-link to="/register" class="bg-white text-black hover:bg-[#ccff00] font-black inline-flex justify-between items-center gap-8 text-xl px-12 py-6 rounded-full transition-all duration-300 relative z-10 group/btn shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_50px_rgba(204,255,0,0.4)] hover:scale-105 active:scale-95">
+              <span>Sign Up Now</span>
+              <span class="text-3xl group-hover/btn:translate-x-2 transition-transform">&rarr;</span>
             </router-link>
           </div>
         </div>
+        
       </div>
-    </section>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.landing-page {
-  background: transparent;
-}
-
-.hero-main-title {
-  margin: 1rem 0 1.5rem;
-}
-
-.capabilities-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-}
-
-.cap-card {
-  padding: 2rem;
-}
-
-.cap-card h3 {
-  margin: 1.25rem 0 0.75rem;
-  font-size: 1.1rem;
-  letter-spacing: -0.02em;
-}
-
-.cap-card p {
-  color: var(--text-dim);
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
-.cap-icon-box {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-subtle);
-}
-
-.portal-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-}
-
-.portal-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.portal-card-v2 {
-  padding: 2rem;
-}
-
-.portal-card-v2 h3 {
-  font-size: 1.25rem;
-  margin: 0;
-  line-height: 1.2;
-}
-
-.portal-card-v2 p {
-  color: var(--text-dim);
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
-.mt-20 { margin-top: 3rem; }
-
-@media (max-width: 1024px) {
-  .capabilities-grid, .portal-grid {
-    grid-template-columns: 1fr;
+@keyframes gradient-x {
+  0%, 100% {
+    background-position: 0% 50%;
   }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+.animate-gradient-x {
+  animation: gradient-x 6s ease infinite;
 }
 </style>

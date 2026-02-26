@@ -136,6 +136,29 @@
           </section>
         </div>
 
+        <!-- Promotion Panel (US-09) -->
+        <section v-if="authStore.isFounder && promotedEvents.length > 0" class="card-premium span-2 animate-corp mb-8 border border-[#ff007f]/30">
+          <div class="section-header-corp mb-6">
+            <h2 class="label-muted text-[#ff007f] tracking-widest font-900">Active Promotion Campaigns</h2>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div v-for="promo in promotedEvents" :key="promo.event_id" class="p-6 bg-black/40 rounded-2xl border border-white/10">
+              <h3 class="font-900 text-lg mb-4 text-white">{{ promo.title }}</h3>
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-sm text-dim">Pre-Promotion:</span>
+                <span class="font-800 text-xl">{{ promo.snapshot_registrations }}</span>
+              </div>
+              <div class="flex justify-between items-center mb-4">
+                <span class="text-sm text-dim">Current:</span>
+                <span class="font-800 text-xl text-brand-primary">{{ getEventCurrentRegistrations(promo.event_id) }}</span>
+              </div>
+              <div class="text-xs text-dim italic">
+                Promoted at: {{ new Date(promo.timestamp).toLocaleTimeString() }}
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Charts Row 2: Revenue & Capacity -->
         <div class="charts-column span-2 grid-inner" v-if="events.length > 0">
           <section class="card-premium animate-corp delay-400">
@@ -154,9 +177,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import axios from 'axios';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
+import { organizerApi, adminApi } from '../services/api';
 import RegistrationTrend from '../components/charts/RegistrationTrend.vue';
 import CategoryBarChart from '../components/charts/CategoryBarChart.vue';
 import RevenuePerEventChart from '../components/charts/RevenuePerEventChart.vue';
@@ -173,6 +196,8 @@ const trendData = ref<any[]>([]);
 const selectedEventId = ref<number | null>(null);
 
 const adminOverview = ref<any>({});
+const promotedEvents = ref<any[]>([]);
+let pollInterval: any;
 
 const totalCapacity = computed(() => events.value.reduce((acc, e) => acc + e.capacity, 0));
 const totalRegistrations = computed(() => events.value.reduce((acc, e) => acc + e.registrations, 0));
@@ -187,19 +212,17 @@ function round(val: number, precision: number) {
     return Math.round(val * multiplier) / multiplier;
 }
 
-const fetchDashboardData = async () => {
-    loading.value = true;
+const fetchDashboardData = async (isPolling = false) => {
+    if (!isPolling) loading.value = true;
     error.value = '';
     try {
-        const config = { headers: { Authorization: `Bearer ${authStore.token}` } };
-        
         const promises = [
-            axios.get('http://localhost:8000/api/organizer/dashboard', config),
-            axios.get('http://localhost:8000/api/organizer/category-insight', config)
+            organizerApi.getDashboard(),
+            organizerApi.getCategoryInsight()
         ];
 
         if (authStore.isFounder || authStore.isAdmin) {
-             promises.push(axios.get('http://localhost:8000/api/admin/dashboard', config));
+             promises.push(adminApi.getDashboard());
         }
 
         const resArray = await Promise.all(promises);
@@ -211,34 +234,50 @@ const fetchDashboardData = async () => {
             adminOverview.value = resArray[2].data;
         }
 
-        if (events.value.length > 0) {
+        if (events.value.length > 0 && !isPolling) {
             selectedEventId.value = events.value[0].event_id;
             await fetchTrendData();
         }
 
     } catch (err: any) {
-        error.value = 'Failed to synchronize dashboard telemetry.';
+        if (!isPolling) error.value = 'Failed to synchronize dashboard telemetry.';
     } finally {
-        loading.value = false;
+        if (!isPolling) loading.value = false;
     }
 };
 
 const toggleFeatureEvent = async (event: any) => {
     try {
-        const config = { headers: { Authorization: `Bearer ${authStore.token}` } };
-        const res = await axios.post(`http://localhost:8000/api/organizer/events/${event.event_id}/feature`, {}, config);
+        const res = await organizerApi.toggleFeature(event.event_id);
         event.is_featured = res.data.is_featured;
+        
+        if (event.is_featured) {
+            // Add to promotion tracking
+            promotedEvents.value.push({
+                event_id: event.event_id,
+                title: event.title,
+                snapshot_registrations: res.data.snapshot_registrations,
+                timestamp: Date.now()
+            });
+        } else {
+            // Remove from tracking
+            promotedEvents.value = promotedEvents.value.filter(p => p.event_id !== event.event_id);
+        }
     } catch (e) {
         alert('Failed to toggle feature status');
     }
+};
+
+const getEventCurrentRegistrations = (eventId: number) => {
+    const ev = events.value.find(e => e.event_id === eventId);
+    return ev ? ev.registrations : 0;
 };
 
 const fetchTrendData = async () => {
     if (!selectedEventId.value) return;
     loadingTrend.value = true;
     try {
-        const config = { headers: { Authorization: `Bearer ${authStore.token}` } };
-        const res = await axios.get(`http://localhost:8000/api/organizer/trend/${selectedEventId.value}`, config);
+        const res = await organizerApi.getTrend(selectedEventId.value);
         trendData.value = res.data;
     } catch (err) {
         console.error("Trend synchronization failed", err);
@@ -249,6 +288,14 @@ const fetchTrendData = async () => {
 
 onMounted(() => {
     fetchDashboardData();
+    // US-02: Organizer Real-Time Polling 
+    pollInterval = setInterval(() => {
+        fetchDashboardData(true);
+    }, 5000); // 5 seconds
+});
+
+onUnmounted(() => {
+    if (pollInterval) clearInterval(pollInterval);
 });
 </script>
 

@@ -14,7 +14,7 @@
 
       <div v-if="loading" class="loading-corp-full">
         <div class="pulse-loader"></div>
-        <span class="tracking-widest font-900 uppercase text-sm mt-4">Syncing Gig Data...</span>
+        <span class="tracking-widest font-900 uppercase text-sm mt-4">Syncing Event Data...</span>
       </div>
       
       <div v-else-if="error" class="error-panel-inline bg-[#ff007f]/10 border-[#ff007f]/20 text-[#ff007f]">{{ error }}</div>
@@ -35,18 +35,18 @@
 
         <div class="info-grid-corp mb-12">
           <div class="info-item">
-            <label class="label-muted mb-3 text-[10px] tracking-widest text-white/40 uppercase font-800">Show Location</label>
+            <label class="label-muted mb-3 text-[10px] tracking-widest text-white/40 uppercase font-800">Event Location</label>
             <p class="text-xl font-800 text-white">{{ event.venue_city }}{{ event.venue_address ? `, ${event.venue_address}` : '' }}</p>
           </div>
           <div class="info-item">
-            <label class="label-muted mb-3 text-[10px] tracking-widest text-white/40 uppercase font-800">Showtime</label>
+            <label class="label-muted mb-3 text-[10px] tracking-widest text-white/40 uppercase font-800">Event Date</label>
             <p class="text-xl font-800 text-white">{{ new Date(event.event_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) }}</p>
           </div>
         </div>
 
         <div class="description-section mb-12 bg-white/5 p-8 rounded-2xl border border-white/5">
-          <label class="label-muted mb-4 block text-[10px] tracking-widest text-[#ccff00] uppercase font-900">The Vibe</label>
-          <p class="text-white/70 text-lg leading-relaxed max-w-4xl font-500 italic">"{{ event.description || 'No vibe summary provided for this gig.' }}"</p>
+          <label class="label-muted mb-4 block text-[10px] tracking-widest text-[#ccff00] uppercase font-900">The Details</label>
+          <p class="text-white/70 text-lg leading-relaxed max-w-4xl font-500 italic">"{{ event.description || 'No description provided for this event.' }}"</p>
         </div>
 
         <div class="registration-panel-corp pt-12 border-t border-white/10">
@@ -64,7 +64,7 @@
           <div class="action-portal-corp">
             <template v-if="!authStore.isAuthenticated">
               <div class="auth-prompt-corp text-center p-12 bg-black/60 rounded-3xl border border-[#ff007f]/20">
-                <p class="text-white/70 text-lg mb-8 font-600">You need to be on the guest list to book this show.</p>
+                <p class="text-white/70 text-lg mb-8 font-600">You need to be logged in to book this event.</p>
                 <router-link to="/login" class="btn-corp bg-[#ff007f] text-black px-12 py-4 font-900 uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_30px_rgba(255,0,127,0.3)]">Login to Access</router-link>
               </div>
             </template>
@@ -85,8 +85,8 @@
                 <div class="input-stack mb-6">
                   <label class="label-muted text-[10px] tracking-widest text-[#00f3ff] mb-3 block font-900">SELECT YOUR ROLE</label>
                   <select v-model="regForm.role" class="input-corp w-full bg-black/80 border-white/10 focus:border-[#00f3ff] py-4">
-                    <option value="athlete">Party Goer / Fan</option>
-                    <option value="sub_vendor">Gig Provider / DJ / Talent</option>
+                    <option value="athlete">Athlete / Fan</option>
+                    <option value="sub_vendor">Service Provider / Referee / Medical</option>
                   </select>
                 </div>
                 
@@ -122,7 +122,7 @@
       </div>
       
       <div v-if="event" class="similar-events-corp mt-20 animate-corp delay-200">
-        <h3 class="label-muted text-[10px] tracking-widest text-[#ccff00] mb-10 font-900 uppercase">Lateral Gigs You'll Love</h3>
+        <h3 class="label-muted text-[10px] tracking-widest text-[#ccff00] mb-10 font-900 uppercase">Similar Events You'll Love</h3>
         <RecommendationRow 
           :eventId="event.id" 
           title="" 
@@ -144,10 +144,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
-import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
+import { eventApi, registrationApi, paymentApi } from '../services/api';
 import RazorpayCheckout from '../components/payment/RazorpayCheckout.vue';
 import RecommendationRow from '../components/RecommendationRow.vue';
 
@@ -159,30 +159,29 @@ const loading = ref(true);
 const error = ref('');
 const registrationStatus = ref<string | null>(null);
 const currentRegistrationId = ref<number | null>(null);
+let pollInterval: any;
 
 const bookingInProgress = ref(false);
 const showCheckout = ref(false);
 const orderData = ref<any>(null);
 
-const fetchEvent = async () => {
+const fetchEvent = async (isPolling = false) => {
   try {
-    const res = await axios.get(`http://localhost:8000/api/events/${route.params.id}`);
+    const res = await eventApi.getById(String(route.params.id));
     event.value = res.data;
     if (authStore.isAuthenticated && authStore.isUser) {
       checkRegistrationStatus();
     }
   } catch (err: any) {
-    error.value = 'Event not found.';
+    if (!isPolling) error.value = 'Event not found.';
   } finally {
-    loading.value = false;
+    if (!isPolling) loading.value = false;
   }
 };
 
 const checkRegistrationStatus = async () => {
   try {
-    const res = await axios.get('http://localhost:8000/api/registrations/my', {
-      headers: { Authorization: `Bearer ${authStore.token}` }
-    });
+    const res = await registrationApi.getMy();
     const reg = res.data.find((r: any) => r.event_id === event.value.id);
     if (reg) {
       registrationStatus.value = reg.status;
@@ -204,15 +203,11 @@ const regForm = ref({
 const submitRegistrationForm = async () => {
   bookingInProgress.value = true;
   try {
-    await axios.post(
-      'http://localhost:8000/api/registrations',
-      { 
-        event_id: event.value.id,
-        role: regForm.value.role,
-        role_details: regForm.value.role_details
-      },
-      { headers: { Authorization: `Bearer ${authStore.token}` } }
-    );
+    await registrationApi.create({ 
+      event_id: event.value.id,
+      role: regForm.value.role,
+      role_details: regForm.value.role_details
+    });
     
     if (event.value.price === 0) {
       alert('Registration successful! (Free Event)');
@@ -240,11 +235,7 @@ const submitRegistrationForm = async () => {
 const initiateBooking = async () => {
   bookingInProgress.value = true;
   try {
-    const res = await axios.post(
-      'http://localhost:8000/api/payments/create-order',
-      { event_id: event.value.id },
-      { headers: { Authorization: `Bearer ${authStore.token}` } }
-    );
+    const res = await paymentApi.createOrder({ event_id: event.value.id });
     orderData.value = res.data;
     showCheckout.value = true;
   } catch (err: any) {
@@ -268,11 +259,7 @@ const handlePaymentError = (msg: string) => {
 const cancelRegistration = async () => {
   if (!confirm('Are you sure you want to cancel this ticket?')) return;
   try {
-    await axios.put(
-      `http://localhost:8000/api/registrations/${currentRegistrationId.value}/cancel`,
-      {},
-      { headers: { Authorization: `Bearer ${authStore.token}` } }
-    );
+    await registrationApi.cancel(currentRegistrationId.value!);
     alert('Ticket cancelled.');
     fetchEvent();
   } catch (err: any) {
@@ -282,6 +269,13 @@ const cancelRegistration = async () => {
 
 onMounted(() => {
   fetchEvent();
+  pollInterval = setInterval(() => {
+    fetchEvent(true);
+  }, 30000);
+});
+
+onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval);
 });
 </script>
 
