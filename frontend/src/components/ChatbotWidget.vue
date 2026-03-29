@@ -1,57 +1,102 @@
 <template>
-  <div class="chatbot-widget">
-    <!-- Chat Button -->
-    <button 
-      v-if="!isOpen" 
-      class="chat-toggle-btn animate-corp"
+  <div class="chat-widget">
+
+    <!-- Floating icon button -->
+    <button
+      v-if="!isOpen"
+      class="chat-fab"
       @click="isOpen = true"
+      aria-label="Open support chat"
+      title="Support"
     >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-      Support Interface
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
     </button>
 
-    <!-- Chat Window -->
-    <div v-else class="chat-window card-premium animate-corp">
-      <div class="chat-header-corp">
-        <div class="header-main">
-          <span class="badge-corp text-xs">AI Core</span>
-          <h4 class="font-800 mt-2">Support Terminal</h4>
-        </div>
-        <button class="close-btn-corp" @click="isOpen = false">&times;</button>
-      </div>
+    <!-- Chat window -->
+    <div v-else class="chat-window">
 
-      <div class="chat-messages-corp" ref="messagesContainer">
-        <div 
-          v-for="(msg, index) in messages" 
-          :key="index"
-          :class="['message-corp', msg.role]"
-        >
-          <div class="msg-content">{{ msg.content }}</div>
-          <div v-if="msg.escalated" class="escalation-warning-corp">
-             PROTOCOL ALERT: Transferred to Human Operator
+      <!-- Header -->
+      <div class="chat-header">
+        <div class="chat-header-left">
+          <div class="chat-avatar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="chat-name">LiveSports Support</p>
+            <p class="chat-status">
+              <span class="status-dot"></span> Online
+            </p>
           </div>
         </div>
-        <div v-if="loading" class="message-corp bot loading-indicator">
-          Synchronizing response...
+        <button class="chat-close" @click="isOpen = false" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Messages -->
+      <div class="chat-messages" ref="messagesContainer">
+        <div
+          v-for="(msg, i) in messages"
+          :key="i"
+          class="msg-row"
+          :class="msg.role === 'user' ? 'msg-row--user' : 'msg-row--bot'"
+        >
+          <div class="msg-bubble" :class="msg.role === 'user' ? 'msg-bubble--user' : 'msg-bubble--bot'">
+            {{ msg.content }}
+          </div>
+          <p v-if="msg.escalated" class="escalation-note">
+            ⚠ Transferred to a human agent
+          </p>
+        </div>
+
+        <!-- Typing indicator -->
+        <div v-if="loading" class="msg-row msg-row--bot">
+          <div class="msg-bubble msg-bubble--bot typing-bubble">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
         </div>
       </div>
 
-      <div class="chat-input-area-corp input-stack">
-        <label class="label-muted mb-2">Query Prompt</label>
-        <div class="input-action-group">
-          <input 
-            v-model="inputMsg" 
-            @keyup.enter="sendMessage"
-            type="text" 
-            placeholder="Input operational inquiry..."
-            class="input-corp"
-            :disabled="loading"
-          />
-          <button @click="sendMessage" :disabled="!inputMsg.trim() || loading" class="btn-corp btn-corp-primary px-6">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-          </button>
-        </div>
+      <!-- Input -->
+      <div class="chat-input-row">
+        <input
+          v-model="inputMsg"
+          type="text"
+          class="chat-input"
+          placeholder="Ask something…"
+          :disabled="loading"
+          @keyup.enter="sendMessage"
+        />
+        <button
+          class="chat-send"
+          :disabled="!inputMsg.trim() || loading"
+          @click="sendMessage"
+          aria-label="Send"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
       </div>
+
     </div>
   </div>
 </template>
@@ -62,58 +107,38 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
 
 const authStore = useAuthStore();
-const isOpen = ref(false);
-const loading = ref(false);
-const inputMsg = ref('');
+const isOpen    = ref(false);
+const loading   = ref(false);
+const inputMsg  = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
 
-type Message = {
-  role: 'user' | 'bot';
-  content: string;
-  escalated?: boolean;
-};
+type Message = { role: 'user' | 'bot'; content: string; escalated?: boolean };
 
 const messages = ref<Message[]>([
-  { role: 'bot', content: 'Operational Support Ready. How can I assist with your deployments today?' }
+  { role: 'bot', content: 'Hi! How can I help you today?' },
 ]);
 
 const scrollToBottom = async () => {
   await nextTick();
-  if (messagesContainer.value) {
+  if (messagesContainer.value)
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
-  }
 };
 
 const sendMessage = async () => {
   const txt = inputMsg.value.trim();
   if (!txt) return;
-
   messages.value.push({ role: 'user', content: txt });
   inputMsg.value = '';
-  loading.value = true;
+  loading.value  = true;
   await scrollToBottom();
-
   try {
-    const config = authStore.token 
-        ? { headers: { Authorization: `Bearer ${authStore.token}` } } 
-        : {};
-
-    const res = await axios.post(
-      '/api/chatbot',
-      { message: txt },
-      config
-    );
-
-    messages.value.push({ 
-      role: 'bot', 
-      content: res.data.response,
-      escalated: res.data.escalated
-    });
-  } catch (err) {
-    messages.value.push({ 
-      role: 'bot', 
-      content: 'Critical Error: Support Terminal unreachable.' 
-    });
+    const config = authStore.token
+      ? { headers: { Authorization: `Bearer ${authStore.token}` } }
+      : {};
+    const res = await axios.post('/api/chatbot', { message: txt }, config);
+    messages.value.push({ role: 'bot', content: res.data.response, escalated: res.data.escalated });
+  } catch {
+    messages.value.push({ role: 'bot', content: 'Sorry, something went wrong. Please try again.' });
   } finally {
     loading.value = false;
     await scrollToBottom();
@@ -122,123 +147,256 @@ const sendMessage = async () => {
 </script>
 
 <style scoped>
-.chatbot-widget {
+/* ── Widget container ── */
+.chat-widget {
   position: fixed;
-  bottom: 3rem;
-  right: 3rem;
+  bottom: 1.75rem;
+  right: 1.75rem;
   z-index: 1000;
-}
-
-.chat-toggle-btn {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  background: var(--brand-primary);
-  color: #000;
-  border: none;
-  padding: 1.25rem 2rem;
-  border-radius: var(--radius-pill);
-  font-size: 1rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 10px 40px rgba(0, 240, 255, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  transition: all 0.3s var(--ease-luxury);
-}
-
-.chat-toggle-btn:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 50px rgba(0, 240, 255, 0.6);
-  background: white;
-}
-
-.chat-window {
-  width: 400px;
-  height: 600px;
   display: flex;
   flex-direction: column;
-  padding: 0;
-  overflow: hidden;
+  align-items: flex-end;
 }
 
-.chat-header-corp {
-  padding: 2.5rem;
+/* ── FAB button ── */
+.chat-fab {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: var(--brand-accent);
+  color: #000;
+  cursor: pointer;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  border-bottom: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.02);
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--brand-accent) 35%, transparent);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.close-btn-corp {
+.chat-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 28px color-mix(in srgb, var(--brand-accent) 50%, transparent);
+}
+
+/* ── Chat window ── */
+.chat-window {
+  width: 340px;
+  height: 480px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel-solid);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+}
+
+[data-theme="light"] .chat-window {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+}
+
+/* ── Header ── */
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.chat-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.chat-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--brand-accent);
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chat-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.chat-status {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  line-height: 1.2;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.chat-close {
   background: none;
   border: none;
-  color: var(--text-dim);
-  font-size: 2rem;
   cursor: pointer;
-  line-height: 0.5;
+  color: var(--text-muted);
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.chat-messages-corp {
+.chat-close:hover {
+  background: var(--bg-panel-light);
+  color: var(--text-primary);
+}
+
+/* ── Messages ── */
+.chat-messages {
   flex: 1;
-  padding: 2.5rem;
+  padding: 1rem 1.1rem;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  background: rgba(0,0,0,0.2);
+  gap: 0.75rem;
   scrollbar-width: none;
 }
 
-.chat-messages-corp::-webkit-scrollbar { display: none; }
+.chat-messages::-webkit-scrollbar { display: none; }
 
-.message-corp {
-  max-width: 85%;
-  padding: 1.25rem 1.75rem;
-  border-radius: var(--radius-md);
-  font-size: 0.95rem;
-  line-height: 1.5;
+.msg-row { display: flex; flex-direction: column; }
+.msg-row--user { align-items: flex-end; }
+.msg-row--bot  { align-items: flex-start; }
+
+.msg-bubble {
+  max-width: 82%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 14px;
+  font-size: 0.85rem;
+  line-height: 1.55;
 }
 
-.message-corp.user {
-  align-self: flex-end;
-  background: var(--brand-primary);
-  color: white;
-  border-bottom-right-radius: 2px;
+.msg-bubble--user {
+  background: var(--brand-accent);
+  color: #000;
+  border-bottom-right-radius: 4px;
 }
 
-.message-corp.bot {
-  align-self: flex-start;
-  background: rgba(255, 255, 255, 0.03);
+.msg-bubble--bot {
+  background: var(--bg-panel-light);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
-  border-bottom-left-radius: 2px;
+  border-bottom-left-radius: 4px;
 }
 
-.escalation-warning-corp {
-  margin-top: 1rem;
-  color: #ffab00;
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+[data-theme="light"] .msg-bubble--bot {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
 }
 
-.chat-input-area-corp {
-  padding: 2rem 2.5rem 2.5rem;
-  background: var(--bg-secondary);
-}
-
-.input-action-group {
+/* Typing indicator */
+.typing-bubble {
   display: flex;
-  gap: 1rem;
+  align-items: center;
+  gap: 4px;
+  padding: 0.65rem 0.9rem;
 }
 
-.loading-indicator {
-  font-style: italic;
-  color: var(--text-dim);
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  animation: bounce 1.2s ease infinite;
 }
 
-.font-800 { font-weight: 800; }
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40%           { transform: translateY(-5px); }
+}
+
+.escalation-note {
+  font-size: 0.68rem;
+  color: #f59e0b;
+  margin-top: 0.35rem;
+  font-weight: 600;
+}
+
+/* ── Input row ── */
+.chat-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--bg-panel-light);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.chat-input::placeholder { color: var(--text-muted); }
+
+.chat-input:focus {
+  border-color: var(--brand-accent);
+}
+
+[data-theme="light"] .chat-input {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.chat-send {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: none;
+  background: var(--brand-accent);
+  color: #000;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.chat-send:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: scale(1.05);
+}
+
+.chat-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 </style>
