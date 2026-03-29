@@ -29,11 +29,16 @@ class EventList(Resource):
         return [e.to_dict() for e in events], 200
 
     @jwt_required()
-    @role_required('organizer')
+    @role_required('organizer', 'admin')
     def post(self):
         """Create a new event (Spec 6.2)"""
         user_id = int(get_jwt_identity())
         data = request.get_json()
+        user = User.query.get(user_id)
+        if user.role == 'admin':
+            organizer_id = int(data.get('organizer_id', user_id))
+        else:
+            organizer_id = user_id
         
         try:
             event = Event(
@@ -47,7 +52,7 @@ class EventList(Resource):
                 price=float(data['price']),
                 tags=data.get('tags', []),
                 banner_url=data.get('banner_url'),
-                organizer_id=user_id,
+                organizer_id=organizer_id,
                 is_active=True
             )
             event.save() # Computes price_tier and commits
@@ -67,14 +72,15 @@ class EventDetail(Resource):
         return event.to_dict(), 200
 
     @jwt_required()
-    @role_required('organizer')
+    @role_required('organizer', 'admin')
     def put(self, id):
         """Update an existing event (Spec 6.2)"""
         user_id = int(get_jwt_identity())
         event = Event.query.get(id)
         if not event:
             return {'message': 'Event not found'}, 404
-        if event.organizer_id != user_id:
+        user = User.query.get(user_id)
+        if user.role != 'admin' and event.organizer_id != user_id:
             return {'message': 'Forbidden'}, 403
 
         data = request.get_json()

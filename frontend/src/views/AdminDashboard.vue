@@ -25,35 +25,59 @@
             </p>
           </div>
 
+          <div class="header-actions">
+            <button @click="fetchData" :disabled="loading" class="refresh-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5"
+                :class="{ 'animate-spin': loading }">
+                <path d="M23 4v6h-6"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Re-Sync Platform
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Tab Bar ── -->
+        <div class="tab-bar">
           <button
-            @click="fetchData"
-            :disabled="loading"
-            class="refresh-btn"
+            class="tab-btn"
+            :class="{ 'tab-btn--active': activeTab === 'analytics' }"
+            @click="activeTab = 'analytics'"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2.5"
-              :class="{ 'animate-spin': loading }">
-              <path d="M23 4v6h-6"/>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
             </svg>
-            Re-Sync Platform
+            Analytics
+          </button>
+          <button
+            class="tab-btn"
+            :class="{ 'tab-btn--active': activeTab === 'events' }"
+            @click="activeTab = 'events'; fetchAllEvents()"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Event Management
           </button>
         </div>
 
         <!-- ── Loading ── -->
-        <div v-if="loading" class="state-center">
+        <div v-if="loading && activeTab === 'analytics'" class="state-center">
           <div class="spinner"></div>
           <span class="state-label">Fetching Intelligence…</span>
         </div>
 
         <!-- ── Error ── -->
-        <div v-else-if="error" class="error-banner">
+        <div v-else-if="error && activeTab === 'analytics'" class="error-banner">
           <span class="text-2xl">⚠️</span>
           <span>{{ error }}</span>
         </div>
 
-        <!-- ── Dashboard ── -->
-        <div v-else class="dashboard-body">
+        <!-- ── Analytics Tab ── -->
+        <div v-else-if="activeTab === 'analytics'" class="dashboard-body">
 
           <!-- Stat cards -->
           <div class="stats-grid">
@@ -146,20 +170,187 @@
           </div>
 
         </div>
+
+        <!-- ── Event Management Tab ── -->
+        <div v-else-if="activeTab === 'events'" class="dashboard-body">
+
+          <!-- Toolbar -->
+          <div class="em-toolbar">
+            <div class="em-search-wrap">
+              <svg class="em-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                v-model="eventSearch"
+                type="text"
+                class="em-search"
+                placeholder="Search events by title, city, or sport…"
+                id="admin-event-search"
+              />
+            </div>
+            <button class="create-event-btn" @click="openCreateModal">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Create Event
+            </button>
+          </div>
+
+          <!-- Loading state -->
+          <div v-if="loadingEvents" class="state-center">
+            <div class="spinner"></div>
+            <span class="state-label">Loading Events…</span>
+          </div>
+
+          <!-- Events table -->
+          <div v-else class="dash-card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="th">#</th>
+                    <th class="th">Title</th>
+                    <th class="th">Organizer ID</th>
+                    <th class="th">Sport</th>
+                    <th class="th">City</th>
+                    <th class="th">Date</th>
+                    <th class="th">Capacity</th>
+                    <th class="th">Price (₹)</th>
+                    <th class="th">Status</th>
+                    <th class="th">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="ev in filteredEvents" :key="ev.id" class="table-body-row">
+                    <td class="td td--muted">{{ ev.id }}</td>
+                    <td class="td td--name">{{ ev.title }}</td>
+                    <td class="td td--dim">{{ ev.organizer_id }}</td>
+                    <td class="td td--dim">{{ ev.sport_category }}</td>
+                    <td class="td td--dim">{{ ev.venue_city || '—' }}</td>
+                    <td class="td td--dim">{{ new Date(ev.event_date).toLocaleDateString('en-GB') }}</td>
+                    <td class="td td--dim">{{ ev.capacity }}</td>
+                    <td class="td td--revenue">{{ ev.price }}</td>
+                    <td class="td">
+                      <span class="status-badge" :class="ev.is_active ? 'status-badge--active' : 'status-badge--inactive'">
+                        {{ ev.is_active ? 'Active' : 'Inactive' }}
+                      </span>
+                    </td>
+                    <td class="td">
+                      <button @click="openEditModal(ev)" class="action-btn action-btn--edit">Edit</button>
+                    </td>
+                  </tr>
+                  <tr v-if="filteredEvents.length === 0">
+                    <td colspan="10" class="td td--muted" style="text-align:center;padding:3rem;">No events found.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
+
+    <!-- ── Create / Edit Event Modal ── -->
+    <div v-if="showEventModal" class="modal-overlay" @click.self="showEventModal = false">
+      <div class="modal-box">
+        <h2 class="modal-title">{{ editingEvent ? 'Edit Event' : 'Create Event' }}</h2>
+        <form @submit.prevent="saveEvent">
+
+          <div class="field">
+            <label class="field-label">Title *</label>
+            <input v-model="eventForm.title" type="text" class="field-input" required />
+          </div>
+
+          <div class="field">
+            <label class="field-label">Description</label>
+            <textarea v-model="eventForm.description" class="field-input" rows="3"></textarea>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label class="field-label">Sport Category</label>
+              <select v-model="eventForm.sport_category" class="field-input">
+                <option>Football</option><option>Basketball</option>
+                <option>Tennis</option><option>Cricket</option>
+                <option>Swimming</option><option>Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label">Event Date & Time *</label>
+              <input v-model="eventForm.event_date" type="datetime-local" class="field-input" required />
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label class="field-label">City</label>
+              <input v-model="eventForm.venue_city" type="text" class="field-input" />
+            </div>
+            <div class="field">
+              <label class="field-label">Venue Address</label>
+              <input v-model="eventForm.venue_address" type="text" class="field-input" />
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label class="field-label">Capacity *</label>
+              <input v-model="eventForm.capacity" type="number" min="1" class="field-input" required />
+            </div>
+            <div class="field">
+              <label class="field-label">Price / Entry Fee (₹) *</label>
+              <input v-model="eventForm.price" type="number" min="0" class="field-input" required />
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label class="field-label">Banner URL</label>
+              <input v-model="eventForm.banner_url" type="text" class="field-input" placeholder="https://…" />
+            </div>
+            <div class="field">
+              <label class="field-label">Organizer User ID</label>
+              <input v-model="eventForm.organizer_id" type="number" class="field-input" placeholder="Leave blank to assign to self" />
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button
+              v-if="editingEvent"
+              type="button"
+              @click="deleteEventFromModal(editingEvent)"
+              class="btn-delete"
+            >Delete Event</button>
+            <div class="modal-actions-right">
+              <button type="button" @click="showEventModal = false" class="btn-cancel">Cancel</button>
+              <button type="submit" class="btn-save">{{ editingEvent ? 'Save Changes' : 'Create Event' }}</button>
+            </div>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { adminApi } from '../services/api';
+import { ref, computed, onMounted } from 'vue';
+import { adminApi, eventApi } from '../services/api';
 import MonthlyTrendChart from '../components/charts/MonthlyTrendChart.vue';
 import CityDistributionChart from '../components/charts/CityDistributionChart.vue';
 import FillRateChart from '../components/charts/FillRateChart.vue';
 import OrganizerComparisonChart from '../components/charts/OrganizerComparisonChart.vue';
 import SportDonutChart from '../components/charts/SportDonutChart.vue';
 
+// ── Tab state ──
+const activeTab = ref<'analytics' | 'events'>('analytics');
+
+// ── Analytics state ──
 const loading = ref(true);
 const error   = ref('');
 
@@ -195,7 +386,106 @@ const fetchData = async () => {
   }
 };
 
-onMounted(() => fetchData());
+// ── Event Management state ──
+const allEvents     = ref<any[]>([]);
+const loadingEvents = ref(false);
+const eventSearch   = ref('');
+const showEventModal  = ref(false);
+const editingEvent    = ref<any>(null);
+
+const eventForm = ref({
+  title: '', description: '', sport_category: 'Football',
+  event_date: '', venue_city: '', venue_address: '',
+  capacity: 100, price: 0, banner_url: '', organizer_id: '' as string | number
+});
+
+const filteredEvents = computed(() => {
+  const q = eventSearch.value.toLowerCase().trim();
+  if (!q) return allEvents.value;
+  return allEvents.value.filter(e =>
+    e.title?.toLowerCase().includes(q) ||
+    e.venue_city?.toLowerCase().includes(q) ||
+    e.sport_category?.toLowerCase().includes(q)
+  );
+});
+
+const fetchAllEvents = async () => {
+  loadingEvents.value = true;
+  try {
+    const res = await adminApi.getAllEvents();
+    allEvents.value = res.data;
+  } catch { /* silent */ } finally {
+    loadingEvents.value = false;
+  }
+};
+
+const openCreateModal = () => {
+  editingEvent.value = null;
+  eventForm.value = {
+    title: '', description: '', sport_category: 'Football',
+    event_date: '', venue_city: '', venue_address: '',
+    capacity: 100, price: 0, banner_url: '', organizer_id: ''
+  };
+  showEventModal.value = true;
+};
+
+const openEditModal = (ev: any) => {
+  editingEvent.value = ev;
+  eventForm.value = {
+    title: ev.title,
+    description: ev.description || '',
+    sport_category: ev.sport_category,
+    event_date: ev.event_date?.slice(0, 16) || '',
+    venue_city: ev.venue_city || '',
+    venue_address: ev.venue_address || '',
+    capacity: ev.capacity,
+    price: ev.price,
+    banner_url: ev.banner_url || '',
+    organizer_id: ev.organizer_id
+  };
+  showEventModal.value = true;
+};
+
+const saveEvent = async () => {
+  try {
+    const payload: any = {
+      ...eventForm.value,
+      event_date: new Date(eventForm.value.event_date).toISOString()
+    };
+    // Strip empty organizer_id so backend defaults to admin's own user_id
+    if (payload.organizer_id === '' || payload.organizer_id === null || payload.organizer_id === undefined) {
+      delete payload.organizer_id;
+    } else {
+      payload.organizer_id = Number(payload.organizer_id);
+    }
+    if (editingEvent.value) {
+      await eventApi.update(String(editingEvent.value.id), payload);
+    } else {
+      await eventApi.create(payload);
+    }
+    showEventModal.value = false;
+    await fetchAllEvents();
+  } catch (err: any) {
+    alert('Error: ' + (err.response?.data?.message || 'Unknown error'));
+  }
+};
+
+const deleteEventFromModal = async (ev: any) => {
+  if (!confirm(`Delete "${ev.title}"? This cannot be undone.`)) return;
+  try {
+    await eventApi.delete(String(ev.id));
+    showEventModal.value = false;
+    await fetchAllEvents();
+  } catch (err: any) {
+    alert('Error deleting: ' + (err.response?.data?.message || ''));
+  }
+};
+
+
+onMounted(() => {
+  fetchData();
+  fetchAllEvents();
+});
 </script>
 
 <style scoped>
@@ -253,7 +543,6 @@ onMounted(() => fetchData());
   background: radial-gradient(circle, rgba(0,243,255,0.08) 0%, transparent 70%);
 }
 
-/* Tone down blobs in light mode */
 [data-theme="light"] .blob-1 {
   background: radial-gradient(circle, rgba(112,0,255,0.05) 0%, transparent 70%);
 }
@@ -270,7 +559,7 @@ onMounted(() => fetchData());
   gap: 2rem;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 4rem;
+  margin-bottom: 2.5rem;
 }
 
 @media (min-width: 768px) {
@@ -278,6 +567,13 @@ onMounted(() => fetchData());
     flex-direction: row;
     align-items: flex-end;
   }
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .header-badge {
@@ -347,6 +643,50 @@ onMounted(() => fetchData());
 }
 
 .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ══════════════════════════════════════════
+   TAB BAR
+══════════════════════════════════════════ */
+.tab-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+  padding: 0.35rem;
+  width: fit-content;
+}
+
+[data-theme="light"] .tab-bar {
+  background: #ffffff;
+  border-color: #94a3b8;
+}
+
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.tab-btn--active {
+  background: #7000ff;
+  color: #fff;
+}
+
+.tab-btn:not(.tab-btn--active):hover {
+  background: var(--bg-panel-light);
+  color: var(--text-primary);
+}
 
 /* ══════════════════════════════════════════
    STATE: LOADING / ERROR
@@ -433,14 +773,12 @@ onMounted(() => fetchData());
 .stat-card--pink:hover   { border-color: rgba(255,0,85,0.4); }
 .stat-card--neutral:hover { border-color: var(--border-premium); }
 
-/* Light mode stat cards: white background, solid border, shadow */
 [data-theme="light"] .stat-card {
   background: #ffffff;
   border-color: #64748b;
   box-shadow: 0 0 0 2px #64748b, 0 6px 24px rgba(0,0,0,0.1);
 }
 
-/* Glow overlays — visible only on hover */
 .stat-card-glow {
   position: absolute;
   inset: 0;
@@ -489,7 +827,7 @@ onMounted(() => fetchData());
 .stat-value--lg { font-size: 2.2rem; }
 
 /* ══════════════════════════════════════════
-   DASHBOARD CARDS (charts + table wrapper)
+   DASHBOARD CARDS
 ══════════════════════════════════════════ */
 .dash-card {
   background: var(--bg-panel);
@@ -501,7 +839,6 @@ onMounted(() => fetchData());
   transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
-/* Light mode: solid white card with a clearly visible border + shadow */
 [data-theme="light"] .dash-card {
   background: #ffffff;
   border-color: #64748b;
@@ -526,7 +863,135 @@ onMounted(() => fetchData());
 .chart-area--tall { min-height: 400px; }
 
 /* ══════════════════════════════════════════
-   LEADERBOARD TABLE
+   EVENT MANAGEMENT TOOLBAR
+══════════════════════════════════════════ */
+.em-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.em-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+  max-width: 480px;
+}
+
+.em-search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.em-search {
+  width: 100%;
+  padding: 0.7rem 1rem 0.7rem 2.75rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.em-search:focus { border-color: #7000ff; }
+
+[data-theme="light"] .em-search {
+  background: #ffffff;
+  border-color: #94a3b8;
+}
+
+.create-event-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #7000ff;
+  color: #fff;
+  border: none;
+  border-radius: 9999px;
+  font-weight: 800;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.create-event-btn:hover {
+  background: #5a00d4;
+  transform: translateY(-1px);
+}
+
+/* ══════════════════════════════════════════
+   STATUS BADGES
+══════════════════════════════════════════ */
+.status-badge {
+  display: inline-flex;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-badge--active {
+  background: rgba(0,223,216,0.12);
+  color: #00dfd8;
+}
+
+.status-badge--inactive {
+  background: rgba(239,68,68,0.1);
+  color: #ef4444;
+}
+
+[data-theme="light"] .status-badge--active { background: rgba(5,150,105,0.1); color: #059669; }
+[data-theme="light"] .status-badge--inactive { background: rgba(220,38,38,0.1); color: #dc2626; }
+
+/* ══════════════════════════════════════════
+   ACTION BUTTONS IN TABLE
+══════════════════════════════════════════ */
+.td-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  padding: 0.3rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s ease;
+}
+
+.action-btn--edit {
+  background: rgba(0, 184, 204, 0.1);
+  color: #00b8cc;
+  border-color: rgba(0, 184, 204, 0.3);
+}
+
+.action-btn--edit:hover { background: rgba(0, 184, 204, 0.2); }
+
+.action-btn--delete {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.action-btn--delete:hover { background: rgba(239, 68, 68, 0.2); }
+
+/* ══════════════════════════════════════════
+   LEADERBOARD TABLE (shared)
 ══════════════════════════════════════════ */
 .leaderboard-table {
   width: 100%;
@@ -572,4 +1037,141 @@ onMounted(() => fetchData());
 }
 
 [data-theme="light"] .td--revenue { color: #0369a1; }
+
+/* ══════════════════════════════════════════
+   MODAL
+══════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-box {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1.5rem;
+  padding: 2rem;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+[data-theme="light"] .modal-box {
+  background: #ffffff;
+  border-color: #94a3b8;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+
+.modal-title {
+  font-size: 1.3rem;
+  font-weight: 900;
+  margin-bottom: 1.75rem;
+  color: var(--text-primary);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 540px) { .field-row { grid-template-columns: 1fr; } }
+
+.field-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.field-input {
+  background: var(--bg-site);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.6rem;
+  padding: 0.65rem 0.9rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s ease;
+  font-family: inherit;
+}
+
+.field-input:focus { border-color: #7000ff; }
+
+[data-theme="light"] .field-input {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+textarea.field-input { resize: vertical; }
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.75rem;
+  gap: 1rem;
+}
+
+.modal-actions-right {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.btn-delete {
+  padding: 0.65rem 1.5rem;
+  border-radius: 9999px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-delete:hover { background: rgba(239, 68, 68, 0.22); }
+
+.btn-cancel {
+  padding: 0.65rem 1.5rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-dim);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-cancel:hover { background: var(--bg-panel-light); }
+
+.btn-save {
+  padding: 0.65rem 1.75rem;
+  border-radius: 9999px;
+  background: #7000ff;
+  color: #fff;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-save:hover { background: #5a00d4; }
 </style>

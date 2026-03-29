@@ -71,6 +71,7 @@ export const adminApi = {
   getFillRate: () => api.get('/admin/fill-rate'),
   getOrganizerPerformance: () => api.get('/admin/organizer-performance'),
   getPopularSport: () => api.get('/admin/popular-sport'),
+  getAllEvents: () => api.get('/admin/events'),
 };
 
 export const organizerApi = {

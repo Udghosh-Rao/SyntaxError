@@ -136,6 +136,15 @@ class OrganizerPerformance(Resource):
             'total_revenue': float(r.revenue or 0)
         } for r in rows], 200
 
+@admin_ns.route('/events')
+class AdminEventList(Resource):
+    @jwt_required()
+    @role_required('admin')
+    def get(self):
+        """List all events for admin management"""
+        events = Event.query.order_by(Event.created_at.desc()).all()
+        return [e.to_dict() for e in events], 200
+
 @admin_ns.route('/escalations')
 class EscalationsList(Resource):
     @jwt_required()
