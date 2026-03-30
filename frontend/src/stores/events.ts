@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import axios from 'axios';
+import api from '@/services/api';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+const API_URL = '/events';
 
 export const useEventsStore = defineStore('events', () => {
   const events = ref<any[]>([]);
@@ -14,7 +14,7 @@ export const useEventsStore = defineStore('events', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await axios.get(`${API_URL}/events`, { params: filters });
+      const response = await api.get(API_URL, { params: filters });
       events.value = response.data.events || response.data;
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to fetch events';
@@ -27,7 +27,7 @@ export const useEventsStore = defineStore('events', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await axios.get(`${API_URL}/events/${id}`);
+      const response = await api.get(`${API_URL}/${id}`);
       selectedEvent.value = response.data.event || response.data;
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to fetch event';
@@ -40,7 +40,7 @@ export const useEventsStore = defineStore('events', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await axios.post(`${API_URL}/events`, eventData);
+      const response = await api.post(API_URL, eventData);
       events.value.push(response.data);
       return response.data;
     } catch (err: any) {
@@ -55,7 +55,7 @@ export const useEventsStore = defineStore('events', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      await axios.delete(`${API_URL}/events/${id}`);
+      await api.delete(`${API_URL}/${id}`);
       events.value = events.value.filter(e => e.id !== id);
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Failed to delete event';
@@ -69,7 +69,7 @@ export const useEventsStore = defineStore('events', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      await axios.post(`${API_URL}/registrations`, { event_id: Number(eventId) });
+      await api.post('/registrations', { event_id: Number(eventId) });
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Failed to register';
       throw err;
@@ -82,7 +82,7 @@ export const useEventsStore = defineStore('events', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      await axios.delete(`${API_URL}/registrations/event/${eventId}`);
+      await api.delete(`/registrations/event/${eventId}`);
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Failed to cancel registration';
       throw err;
