@@ -40,6 +40,18 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'admin' }
     },
     {
+      path: '/admin/events/create',
+      name: 'admin-create-event',
+      component: () => import('../views/AdminEventForm.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
+    {
+      path: '/admin/events/edit/:id',
+      name: 'admin-edit-event',
+      component: () => import('../views/AdminEventForm.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
