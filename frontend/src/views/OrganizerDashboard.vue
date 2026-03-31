@@ -283,7 +283,8 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); });
   min-height: 100vh;
   background: var(--bg-site);
   color: var(--text-main);
-  padding-top: 6rem; /* clears fixed navbar */
+  padding-top: 6rem;
+  padding-bottom: 4rem;
 }
 
 /* ── Header ── */
