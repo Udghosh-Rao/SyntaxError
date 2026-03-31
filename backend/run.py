@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 import os
+from dotenv import load_dotenv
+
+# Load .env BEFORE anything else reads os.getenv()
+load_dotenv()
+
 from app import create_app, db
 from app.models import User, Event, Registration, Payment
 

@@ -16,29 +16,36 @@ class CreateOrder(Resource):
     @jwt_required()
     @role_required('user')
     def post(self):
-        """Create Razorpay order (Spec 6.4)"""
+        """Create Razorpay order"""
         user_id = int(get_jwt_identity())
         data = request.get_json()
         event_id = data.get('event_id')
-        
+
         event = Event.query.get(event_id)
         if not event or event.seats_remaining <= 0:
             return {'message': 'Invalid event or sold out'}, 400
-            
-        # Create pending registration
+
+        # Create or fetch pending registration
         reg = Registration.query.filter_by(user_id=user_id, event_id=event_id).first()
         if not reg:
             reg = Registration(user_id=user_id, event_id=event_id, status='pending')
             db.session.add(reg)
-            db.session.commit() # Need reg.id to create payment
+            db.session.commit()
 
         if reg.status == 'confirmed':
-            return {'message': 'Already confirmed'}, 400
+            return {'message': 'Already registered and confirmed'}, 400
 
-        # Feature 6 - Payment Flow
-        order_id, amount_paise = rzp_service.create_order(event.price, reg.id)
+        # Call Razorpay — wrap in try/except to surface real errors
+        try:
+            order_id, amount_paise = rzp_service.create_order(event.price, reg.id)
+        except Exception as e:
+            # Log and return a readable error instead of a silent 500
+            import traceback
+            traceback.print_exc()
+            return {'message': f'Payment gateway error: {str(e)}'}, 502
+
         fee, payout = rzp_service.calculate_payouts(event.price)
-        
+
         payment = Payment.query.filter_by(registration_id=reg.id).first()
         if not payment:
             payment = Payment(
@@ -52,7 +59,7 @@ class CreateOrder(Resource):
             db.session.add(payment)
         else:
             payment.razorpay_order_id = order_id
-            
+
         try:
             db.session.commit()
             return {
@@ -63,35 +70,36 @@ class CreateOrder(Resource):
             }, 200
         except Exception as e:
             db.session.rollback()
-            return {'message': str(e)}, 400
+            return {'message': str(e)}, 500
+
 
 @payments_ns.route('/verify')
 class VerifyPayment(Resource):
     @jwt_required()
     @role_required('user')
     def post(self):
-        """Verify Razorpay signature and confirm registration (Spec 6.4)"""
+        """Verify Razorpay signature and confirm registration"""
         data = request.get_json()
         order_id = data.get('razorpay_order_id')
         payment_id = data.get('razorpay_payment_id')
         signature = data.get('razorpay_signature')
-        
+
         payment = Payment.query.filter_by(razorpay_order_id=order_id).first()
         if not payment:
             return {'message': 'Payment record not found'}, 404
-            
+
         valid = rzp_service.verify_payment_signature(order_id, payment_id, signature)
         if not valid:
             payment.status = 'failed'
             db.session.commit()
             return {'message': 'Invalid payment signature'}, 400
-            
+
         payment.status = 'paid'
         payment.razorpay_payment_id = payment_id
         payment.razorpay_signature = signature
-        
+
         reg = payment.registration
         reg.status = 'confirmed'
-        
+
         db.session.commit()
         return {'message': 'Payment successful', 'registration_id': reg.id}, 200

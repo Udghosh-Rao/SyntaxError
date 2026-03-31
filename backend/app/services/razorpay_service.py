@@ -1,6 +1,7 @@
 import os
 import hmac
 import hashlib
+import razorpay
 
 class RazorpayService:
     """
@@ -17,9 +18,9 @@ class RazorpayService:
         amount_in_paise = int(amount_in_rupees * 100)
         
         # In production:
-        # client = razorpay.Client(auth=(self.key_id, self.key_secret))
-        # order = client.order.create({'amount': amount_in_paise, 'currency': 'INR', 'receipt': str(receipt_id)})
-        # return order['id'], amount_in_paise
+        client = razorpay.Client(auth=(self.key_id, self.key_secret))
+        order = client.order.create({'amount': amount_in_paise, 'currency': 'INR', 'receipt': str(receipt_id)})
+        return order['id'], amount_in_paise
         
         # Mock response for MVP without active keys
         mock_order_id = f"order_{receipt_id}_{amount_in_paise}"
