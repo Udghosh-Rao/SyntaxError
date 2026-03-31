@@ -117,8 +117,7 @@
                     </button>
                   </td>
                   <td class="td-actions">
-                    <button @click="openEditModal(event)" class="action-btn action-btn--edit">Edit</button>
-                    <button @click="deleteOrgEvent(event)" class="action-btn action-btn--delete">Delete</button>
+                    <button @click="router.push('/organizer/edit/' + event.event_id)" class="action-btn action-btn--edit">Edit</button>
                   </td>
                 </tr>
                   <tr v-if="events.length === 0">
@@ -195,65 +194,12 @@
       </div>
     </div>
 
-    <!-- ── Edit Event Modal ── -->
-    <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
-      <div class="modal-box">
-        <h2 class="modal-title">Edit Event</h2>
-        <form @submit.prevent="saveOrgEvent">
-          <div class="field">
-            <label class="field-label">Title</label>
-            <input v-model="editForm.title" type="text" class="field-input" required />
-          </div>
-          <div class="field">
-            <label class="field-label">Description</label>
-            <textarea v-model="editForm.description" class="field-input" rows="3"></textarea>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label class="field-label">Date & Time</label>
-              <input v-model="editForm.event_date" type="datetime-local" class="field-input" required />
-            </div>
-            <div class="field">
-              <label class="field-label">Entry Fee (₹)</label>
-              <input v-model="editForm.price" type="number" min="0" class="field-input" required />
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label class="field-label">City</label>
-              <input v-model="editForm.venue_city" type="text" class="field-input" />
-            </div>
-            <div class="field">
-              <label class="field-label">Venue Address</label>
-              <input v-model="editForm.venue_address" type="text" class="field-input" />
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label class="field-label">Sport Category</label>
-              <select v-model="editForm.sport_category" class="field-input">
-                <option>Football</option><option>Basketball</option>
-                <option>Tennis</option><option>Cricket</option>
-                <option>Swimming</option><option>Other</option>
-              </select>
-            </div>
-            <div class="field">
-              <label class="field-label">Capacity</label>
-              <input v-model="editForm.capacity" type="number" min="1" class="field-input" required />
-            </div>
-          </div>
-          <div class="modal-actions">
-            <button type="button" @click="showEditModal = false" class="btn-cancel">Cancel</button>
-            <button type="submit" class="btn-save">Save Changes</button>
-          </div>
-        </form>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { organizerApi, adminApi, eventApi } from '../services/api';
 import RegistrationTrend from '../components/charts/RegistrationTrend.vue';
@@ -262,6 +208,7 @@ import RevenuePerEventChart from '../components/charts/RevenuePerEventChart.vue'
 import CapacityChart from '../components/charts/CapacityChart.vue';
 
 const authStore    = useAuthStore();
+const router       = useRouter();
 const loading      = ref(true);
 const loadingTrend = ref(false);
 const error        = ref('');
@@ -328,54 +275,6 @@ const fetchTrendData = async () => {
 onMounted(() => { fetchDashboardData(); pollInterval = setInterval(() => fetchDashboardData(true), 5000); });
 onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); });
 
-// ── Organizer Edit / Delete ──
-const showEditModal    = ref(false);
-const editingEventId   = ref<number | null>(null);
-const editForm = ref({
-  title: '', description: '', sport_category: 'Football',
-  event_date: '', venue_city: '', venue_address: '',
-  capacity: 100, price: 0
-});
-
-const openEditModal = (event: any) => {
-  editingEventId.value = event.event_id;
-  editForm.value = {
-    title: event.title,
-    description: event.description || '',
-    sport_category: event.sport_category,
-    event_date: event.event_date?.slice(0, 16) || '',
-    venue_city: event.venue_city || '',
-    venue_address: event.venue_address || '',
-    capacity: event.capacity,
-    price: event.price
-  };
-  showEditModal.value = true;
-};
-
-const saveOrgEvent = async () => {
-  if (!editingEventId.value) return;
-  try {
-    const payload = {
-      ...editForm.value,
-      event_date: new Date(editForm.value.event_date).toISOString()
-    };
-    await eventApi.update(String(editingEventId.value), payload);
-    showEditModal.value = false;
-    await fetchDashboardData();
-  } catch (err: any) {
-    alert('Failed to save: ' + (err.response?.data?.message || ''));
-  }
-};
-
-const deleteOrgEvent = async (event: any) => {
-  if (!confirm(`Delete "${event.title}"? This cannot be undone.`)) return;
-  try {
-    await eventApi.delete(String(event.event_id));
-    await fetchDashboardData();
-  } catch (err: any) {
-    alert('Failed to delete: ' + (err.response?.data?.message || ''));
-  }
-};
 </script>
 
 <style scoped>
@@ -737,110 +636,5 @@ const deleteOrgEvent = async (event: any) => {
 }
 
 .action-btn--delete:hover { background: rgba(239, 68, 68, 0.2); }
-
-/* ── Modal ── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
-.modal-box {
-  background: var(--bg-panel);
-  border: 1px solid var(--border-subtle);
-  border-radius: 1.5rem;
-  padding: 2rem;
-  width: 100%;
-  max-width: 640px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-[data-theme="light"] .modal-box {
-  background: #ffffff;
-  border-color: #94a3b8;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 800;
-  margin-bottom: 1.5rem;
-  color: var(--text-primary);
-}
-
-.field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
-.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-
-@media (max-width: 540px) { .field-row { grid-template-columns: 1fr; } }
-
-.field-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.field-input {
-  background: var(--bg-site);
-  border: 1px solid var(--border-subtle);
-  border-radius: 0.6rem;
-  padding: 0.6rem 0.85rem;
-  color: var(--text-primary);
-  font-size: 0.9rem;
-  width: 100%;
-  outline: none;
-  transition: border-color 0.2s ease;
-  font-family: inherit;
-}
-
-.field-input:focus { border-color: #7000ff; }
-
-[data-theme="light"] .field-input {
-  background: #f8fafc;
-  border-color: #94a3b8;
-  color: #0f172a;
-}
-
-textarea.field-input { resize: vertical; }
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 1.5rem;
-}
-
-.btn-cancel {
-  padding: 0.65rem 1.5rem;
-  border-radius: 9999px;
-  border: 1px solid var(--border-subtle);
-  background: transparent;
-  color: var(--text-dim);
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.btn-cancel:hover { background: var(--bg-panel-light); }
-
-.btn-save {
-  padding: 0.65rem 1.75rem;
-  border-radius: 9999px;
-  background: #7000ff;
-  color: #fff;
-  border: none;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.btn-save:hover { background: #5a00d4; }
 
 </style>
