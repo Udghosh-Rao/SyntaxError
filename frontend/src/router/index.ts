@@ -28,6 +28,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'organizer' }
     },
     {
+      path: '/organizer/edit/:id',
+      name: 'edit-event',
+      component: () => import('../views/EditEvent.vue'),
+      meta: { requiresAuth: true, role: 'organizer' }
+    },
+    {
       path: '/admin',
       name: 'admin',
       component: () => import('../views/AdminDashboard.vue'),
