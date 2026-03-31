@@ -1,6 +1,14 @@
 <template>
   <div class="login-page">
 
+    <!-- Google onboarding overlay for new users -->
+    <GoogleOnboarding
+      v-if="showOnboarding"
+      :name="onboardingName"
+      :temp-token="onboardingToken"
+      :user-id="onboardingId"
+    />
+
     <!-- ── Left panel: branding ── -->
     <div class="login-left">
       <div class="login-left-inner">
@@ -163,6 +171,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import axios from 'axios';
+import GoogleOnboarding from '../components/GoogleOnboarding.vue';
 
 const router        = useRouter();
 const authStore     = useAuthStore();
@@ -171,7 +180,11 @@ const password      = ref('');
 const error         = ref('');
 const showPassword  = ref(false);
 const rememberMe    = ref(false);
-const googleLoading = ref(false);
+const googleLoading   = ref(false);
+const showOnboarding  = ref(false);
+const onboardingName  = ref('');
+const onboardingToken = ref('');
+const onboardingId    = ref(0);
 
 const handleLogin = async () => {
   error.value = '';
@@ -204,14 +217,23 @@ const handleGoogleLogin = () => {
     callback: async (response: { credential: string }) => {
       try {
         const res = await axios.post('/api/auth/oauth/google', { id_token: response.credential });
-        authStore.token  = res.data.access_token;
-        authStore.role   = res.data.role;
-        authStore.userId = res.data.user_id;
-        localStorage.setItem('auth_token', res.data.access_token);
-        localStorage.setItem('user_role',  res.data.role);
-        localStorage.setItem('user_id',    String(res.data.user_id));
-        await authStore.fetchProfile();
-        redirectAfterLogin();
+        if (res.data.is_new_user) {
+          // New user — show onboarding overlay
+          onboardingName.value  = res.data.name;
+          onboardingToken.value = res.data.temp_token;
+          onboardingId.value    = res.data.user_id;
+          showOnboarding.value  = true;
+        } else {
+          // Existing user — sign in immediately
+          authStore.token  = res.data.access_token;
+          authStore.role   = res.data.role;
+          authStore.userId = res.data.user_id;
+          localStorage.setItem('auth_token', res.data.access_token);
+          localStorage.setItem('user_role',  res.data.role);
+          localStorage.setItem('user_id',    String(res.data.user_id));
+          await authStore.fetchProfile();
+          redirectAfterLogin();
+        }
       } catch (err: any) {
         error.value = err.response?.data?.message || 'Google Sign-In failed.';
       } finally {
