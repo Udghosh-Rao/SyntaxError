@@ -141,9 +141,23 @@ class AdminEventList(Resource):
     @jwt_required()
     @role_required('admin')
     def get(self):
-        """List all events for admin management"""
-        events = Event.query.order_by(Event.created_at.desc()).all()
-        return [e.to_dict() for e in events], 200
+        """Get all events (active and inactive) for admin management"""
+        events = Event.query.order_by(Event.id.desc()).all()
+        return [{
+            'id':             e.id,
+            'title':          e.title,
+            'organizer_id':   e.organizer_id,
+            'sport_category': e.sport_category,
+            'venue_city':     e.venue_city,
+            'venue_address':  e.venue_address,
+            'event_date':     e.event_date.isoformat() if e.event_date else None,
+            'capacity':       e.capacity,
+            'price':          e.price,
+            'banner_url':     e.banner_url,
+            'description':    e.description,
+            'is_active':      e.is_active,
+        } for e in events], 200
+
 
 @admin_ns.route('/escalations')
 class EscalationsList(Resource):
