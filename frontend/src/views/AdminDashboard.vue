@@ -189,7 +189,7 @@
                 id="admin-event-search"
               />
             </div>
-            <button class="create-event-btn" @click="openCreateModal">
+            <button class="create-event-btn" @click="router.push('/admin/events/create')">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2.5"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -239,7 +239,7 @@
                       </span>
                     </td>
                     <td class="td">
-                      <button @click="openEditModal(ev)" class="action-btn action-btn--edit">Edit</button>
+                      <button @click="router.push('/admin/events/edit/' + ev.id)" class="action-btn action-btn--edit">Edit</button>
                     </td>
                   </tr>
                   <tr v-if="filteredEvents.length === 0">
@@ -254,92 +254,12 @@
       </div>
     </div>
 
-    <!-- ── Create / Edit Event Modal ── -->
-    <div v-if="showEventModal" class="modal-overlay" @click.self="showEventModal = false">
-      <div class="modal-box">
-        <h2 class="modal-title">{{ editingEvent ? 'Edit Event' : 'Create Event' }}</h2>
-        <form @submit.prevent="saveEvent">
-
-          <div class="field">
-            <label class="field-label">Title *</label>
-            <input v-model="eventForm.title" type="text" class="field-input" required />
-          </div>
-
-          <div class="field">
-            <label class="field-label">Description</label>
-            <textarea v-model="eventForm.description" class="field-input" rows="3"></textarea>
-          </div>
-
-          <div class="field-row">
-            <div class="field">
-              <label class="field-label">Sport Category</label>
-              <select v-model="eventForm.sport_category" class="field-input">
-                <option>Football</option><option>Basketball</option>
-                <option>Tennis</option><option>Cricket</option>
-                <option>Swimming</option><option>Other</option>
-              </select>
-            </div>
-            <div class="field">
-              <label class="field-label">Event Date & Time *</label>
-              <input v-model="eventForm.event_date" type="datetime-local" class="field-input" required />
-            </div>
-          </div>
-
-          <div class="field-row">
-            <div class="field">
-              <label class="field-label">City</label>
-              <input v-model="eventForm.venue_city" type="text" class="field-input" />
-            </div>
-            <div class="field">
-              <label class="field-label">Venue Address</label>
-              <input v-model="eventForm.venue_address" type="text" class="field-input" />
-            </div>
-          </div>
-
-          <div class="field-row">
-            <div class="field">
-              <label class="field-label">Capacity *</label>
-              <input v-model="eventForm.capacity" type="number" min="1" class="field-input" required />
-            </div>
-            <div class="field">
-              <label class="field-label">Price / Entry Fee (₹) *</label>
-              <input v-model="eventForm.price" type="number" min="0" class="field-input" required />
-            </div>
-          </div>
-
-          <div class="field-row">
-            <div class="field">
-              <label class="field-label">Banner URL</label>
-              <input v-model="eventForm.banner_url" type="text" class="field-input" placeholder="https://…" />
-            </div>
-            <div class="field">
-              <label class="field-label">Organizer User ID</label>
-              <input v-model="eventForm.organizer_id" type="number" class="field-input" placeholder="Leave blank to assign to self" />
-            </div>
-          </div>
-
-          <div class="modal-actions">
-            <button
-              v-if="editingEvent"
-              type="button"
-              @click="deleteEventFromModal(editingEvent)"
-              class="btn-delete"
-            >Delete Event</button>
-            <div class="modal-actions-right">
-              <button type="button" @click="showEventModal = false" class="btn-cancel">Cancel</button>
-              <button type="submit" class="btn-save">{{ editingEvent ? 'Save Changes' : 'Create Event' }}</button>
-            </div>
-          </div>
-
-        </form>
-      </div>
-    </div>
-
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { adminApi, eventApi } from '../services/api';
 import MonthlyTrendChart from '../components/charts/MonthlyTrendChart.vue';
 import CityDistributionChart from '../components/charts/CityDistributionChart.vue';
@@ -347,8 +267,8 @@ import FillRateChart from '../components/charts/FillRateChart.vue';
 import OrganizerComparisonChart from '../components/charts/OrganizerComparisonChart.vue';
 import SportDonutChart from '../components/charts/SportDonutChart.vue';
 
-// ── Tab state ──
 const activeTab = ref<'analytics' | 'events'>('analytics');
+const router    = useRouter();
 
 // ── Analytics state ──
 const loading = ref(true);
@@ -390,14 +310,6 @@ const fetchData = async () => {
 const allEvents     = ref<any[]>([]);
 const loadingEvents = ref(false);
 const eventSearch   = ref('');
-const showEventModal  = ref(false);
-const editingEvent    = ref<any>(null);
-
-const eventForm = ref({
-  title: '', description: '', sport_category: 'Football',
-  event_date: '', venue_city: '', venue_address: '',
-  capacity: 100, price: 0, banner_url: '', organizer_id: '' as string | number
-});
 
 const filteredEvents = computed(() => {
   const q = eventSearch.value.toLowerCase().trim();
@@ -418,69 +330,6 @@ const fetchAllEvents = async () => {
     loadingEvents.value = false;
   }
 };
-
-const openCreateModal = () => {
-  editingEvent.value = null;
-  eventForm.value = {
-    title: '', description: '', sport_category: 'Football',
-    event_date: '', venue_city: '', venue_address: '',
-    capacity: 100, price: 0, banner_url: '', organizer_id: ''
-  };
-  showEventModal.value = true;
-};
-
-const openEditModal = (ev: any) => {
-  editingEvent.value = ev;
-  eventForm.value = {
-    title: ev.title,
-    description: ev.description || '',
-    sport_category: ev.sport_category,
-    event_date: ev.event_date?.slice(0, 16) || '',
-    venue_city: ev.venue_city || '',
-    venue_address: ev.venue_address || '',
-    capacity: ev.capacity,
-    price: ev.price,
-    banner_url: ev.banner_url || '',
-    organizer_id: ev.organizer_id
-  };
-  showEventModal.value = true;
-};
-
-const saveEvent = async () => {
-  try {
-    const payload: any = {
-      ...eventForm.value,
-      event_date: new Date(eventForm.value.event_date).toISOString()
-    };
-    // Strip empty organizer_id so backend defaults to admin's own user_id
-    if (payload.organizer_id === '' || payload.organizer_id === null || payload.organizer_id === undefined) {
-      delete payload.organizer_id;
-    } else {
-      payload.organizer_id = Number(payload.organizer_id);
-    }
-    if (editingEvent.value) {
-      await eventApi.update(String(editingEvent.value.id), payload);
-    } else {
-      await eventApi.create(payload);
-    }
-    showEventModal.value = false;
-    await fetchAllEvents();
-  } catch (err: any) {
-    alert('Error: ' + (err.response?.data?.message || 'Unknown error'));
-  }
-};
-
-const deleteEventFromModal = async (ev: any) => {
-  if (!confirm(`Delete "${ev.title}"? This cannot be undone.`)) return;
-  try {
-    await eventApi.delete(String(ev.id));
-    showEventModal.value = false;
-    await fetchAllEvents();
-  } catch (err: any) {
-    alert('Error deleting: ' + (err.response?.data?.message || ''));
-  }
-};
-
 
 onMounted(() => {
   fetchData();
@@ -1038,140 +887,4 @@ onMounted(() => {
 
 [data-theme="light"] .td--revenue { color: #0369a1; }
 
-/* ══════════════════════════════════════════
-   MODAL
-══════════════════════════════════════════ */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
-.modal-box {
-  background: var(--bg-panel);
-  border: 1px solid var(--border-subtle);
-  border-radius: 1.5rem;
-  padding: 2rem;
-  width: 100%;
-  max-width: 680px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-[data-theme="light"] .modal-box {
-  background: #ffffff;
-  border-color: #94a3b8;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-}
-
-.modal-title {
-  font-size: 1.3rem;
-  font-weight: 900;
-  margin-bottom: 1.75rem;
-  color: var(--text-primary);
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-bottom: 1rem;
-}
-
-.field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-@media (max-width: 540px) { .field-row { grid-template-columns: 1fr; } }
-
-.field-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.field-input {
-  background: var(--bg-site);
-  border: 1px solid var(--border-subtle);
-  border-radius: 0.6rem;
-  padding: 0.65rem 0.9rem;
-  color: var(--text-primary);
-  font-size: 0.9rem;
-  width: 100%;
-  outline: none;
-  transition: border-color 0.2s ease;
-  font-family: inherit;
-}
-
-.field-input:focus { border-color: #7000ff; }
-
-[data-theme="light"] .field-input {
-  background: #f8fafc;
-  border-color: #94a3b8;
-  color: #0f172a;
-}
-
-textarea.field-input { resize: vertical; }
-
-.modal-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 1.75rem;
-  gap: 1rem;
-}
-
-.modal-actions-right {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.btn-delete {
-  padding: 0.65rem 1.5rem;
-  border-radius: 9999px;
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.btn-delete:hover { background: rgba(239, 68, 68, 0.22); }
-
-.btn-cancel {
-  padding: 0.65rem 1.5rem;
-  border-radius: 9999px;
-  border: 1px solid var(--border-subtle);
-  background: transparent;
-  color: var(--text-dim);
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.btn-cancel:hover { background: var(--bg-panel-light); }
-
-.btn-save {
-  padding: 0.65rem 1.75rem;
-  border-radius: 9999px;
-  background: #7000ff;
-  color: #fff;
-  border: none;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.btn-save:hover { background: #5a00d4; }
 </style>
