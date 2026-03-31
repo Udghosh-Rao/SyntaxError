@@ -254,7 +254,7 @@ import ContainerScrollAnimation from "@/components/ui/ContainerScrollAnimation.v
   z-index: 20;
   background: var(--bg-site);
   border-top: 1px solid var(--border-subtle);
-  padding: 6rem 0;
+  padding: 6rem 0 2rem;
   transition: background 0.3s ease;
 }
 
