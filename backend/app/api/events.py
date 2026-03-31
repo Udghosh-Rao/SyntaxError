@@ -31,15 +31,15 @@ class EventList(Resource):
     @jwt_required()
     @role_required('organizer', 'admin')
     def post(self):
-        """Create a new event (Spec 6.2)"""
+        """Create a new event (Spec 6.2) — organizers and admins allowed"""
         user_id = int(get_jwt_identity())
         data = request.get_json()
         user = User.query.get(user_id)
-        if user.role == 'admin':
-            organizer_id = int(data.get('organizer_id', user_id))
-        else:
-            organizer_id = user_id
-        
+
+        # Admin can assign event to a specific organizer via organizer_id,
+        # otherwise the event is assigned to the caller themselves.
+        organizer_id = int(data['organizer_id']) if data.get('organizer_id') else user_id
+
         try:
             event = Event(
                 title=data['title'],
@@ -55,12 +55,13 @@ class EventList(Resource):
                 organizer_id=organizer_id,
                 is_active=True
             )
-            event.save() # Computes price_tier and commits
+            event.save()  # Computes price_tier and commits
             algolia_service.index_event(event)
             return event.to_dict(), 201
         except Exception as e:
             db.session.rollback()
             return {'message': str(e)}, 400
+
 
 @events_ns.route('/<int:id>')
 class EventDetail(Resource):
@@ -74,12 +75,14 @@ class EventDetail(Resource):
     @jwt_required()
     @role_required('organizer', 'admin')
     def put(self, id):
-        """Update an existing event (Spec 6.2)"""
+        """Update an existing event (Spec 6.2) — admin can edit any event"""
         user_id = int(get_jwt_identity())
         event = Event.query.get(id)
         if not event:
             return {'message': 'Event not found'}, 404
+
         user = User.query.get(user_id)
+        # Organizers can only edit their own events; admins can edit any event
         if user.role != 'admin' and event.organizer_id != user_id:
             return {'message': 'Forbidden'}, 403
 
@@ -94,7 +97,7 @@ class EventDetail(Resource):
         event.capacity = int(data.get('capacity', event.capacity))
         event.price = float(data.get('price', event.price))
         event.tags = data.get('tags', event.tags)
-        
+
         event.save()
         algolia_service.index_event(event)
         return event.to_dict(), 200
@@ -107,7 +110,7 @@ class EventDetail(Resource):
         event = Event.query.get(id)
         if not event:
             return {'message': 'Event not found'}, 404
-            
+
         user = User.query.get(user_id)
         if user.role != 'admin' and event.organizer_id != user_id:
             return {'message': 'Forbidden'}, 403
@@ -117,6 +120,7 @@ class EventDetail(Resource):
         algolia_service.remove_event(event.id)
         return {'message': 'Event deleted'}, 200
 
+
 @events_ns.route('/<int:id>/similar')
 class EventSimilar(Resource):
     def get(self, id):
@@ -124,6 +128,6 @@ class EventSimilar(Resource):
         event = Event.query.get(id)
         if not event:
             return {'message': 'Event not found'}, 404
-            
+
         similar = RecommendationService.get_similar(event, limit=5)
         return [e.to_dict() for e in similar], 200
