@@ -211,7 +211,6 @@
               <table class="leaderboard-table">
                 <thead>
                   <tr class="table-header-row">
-                    <th class="th">#</th>
                     <th class="th">Title</th>
                     <th class="th">Organizer ID</th>
                     <th class="th">Sport</th>
@@ -225,7 +224,6 @@
                 </thead>
                 <tbody>
                   <tr v-for="ev in filteredEvents" :key="ev.id" class="table-body-row">
-                    <td class="td td--muted">{{ ev.id }}</td>
                     <td class="td td--name">{{ ev.title }}</td>
                     <td class="td td--dim">{{ ev.organizer_id }}</td>
                     <td class="td td--dim">{{ ev.sport_category }}</td>
@@ -239,11 +237,16 @@
                       </span>
                     </td>
                     <td class="td">
-                      <button @click="router.push('/admin/events/edit/' + ev.id)" class="action-btn action-btn--edit">Edit</button>
+                      <button
+                        @click="ev.is_active && router.push('/admin/events/edit/' + ev.id)"
+                        class="action-btn action-btn--edit"
+                        :class="{ 'action-btn--disabled': !ev.is_active }"
+                        :title="ev.is_active ? 'Edit event' : 'Event has been deleted'"
+                      >Edit</button>
                     </td>
                   </tr>
                   <tr v-if="filteredEvents.length === 0">
-                    <td colspan="10" class="td td--muted" style="text-align:center;padding:3rem;">No events found.</td>
+                    <td colspan="9" class="td td--muted" style="text-align:center;padding:3rem;">No events found.</td>
                   </tr>
                 </tbody>
               </table>
@@ -829,7 +832,21 @@ onMounted(() => {
   border-color: rgba(0, 184, 204, 0.3);
 }
 
-.action-btn--edit:hover { background: rgba(0, 184, 204, 0.2); }
+.action-btn--edit:hover:not(.action-btn--disabled) { background: rgba(0, 184, 204, 0.2); }
+
+.action-btn--disabled {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.4);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+[data-theme="light"] .action-btn--disabled {
+  background: rgba(100, 116, 139, 0.12);
+  color: #64748b;
+  border-color: rgba(100, 116, 139, 0.45);
+}
 
 .action-btn--delete {
   background: rgba(239, 68, 68, 0.1);
