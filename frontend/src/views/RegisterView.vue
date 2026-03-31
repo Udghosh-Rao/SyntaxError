@@ -125,7 +125,6 @@
                   class="sport-btn sport-btn--on custom-tag"
                   :style="{ background: 'var(--brand-accent)', borderColor: 'var(--brand-accent)', color: '#000' }"
                 >
-                  <span>🎯</span>
                   {{ tag }}
                   <button type="button" class="tag-remove"
                     @click="removeCustomTag(i)" aria-label="Remove">×</button>
@@ -165,19 +164,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Referral Code -->
-          <div class="field">
-            <label class="field-label">Referral Code <span class="field-optional">(optional)</span></label>
-            <input
-              v-model="form.referral_code"
-              type="text"
-              class="field-input"
-              placeholder="Enter referral code if you have one"
-              autocomplete="off"
-            />
-          </div>
-
           <!-- Error -->
           <div v-if="error" class="error-row">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -223,7 +209,7 @@ const sportOptions = [
   { value: 'cricket',  label: 'Cricket',  emoji: '🏏' },
   { value: 'football', label: 'Football', emoji: '⚽' },
   { value: 'comedy',   label: 'Comedy',   emoji: '🎭' },
-  { value: 'others',   label: 'Others',   emoji: '🎯' },
+  { value: 'others',   label: 'Others',   emoji: '' },
 ];
 
 const form = ref({
