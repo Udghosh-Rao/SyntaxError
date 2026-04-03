@@ -93,7 +93,6 @@
               class="sport-btn sport-btn--on custom-tag"
               :style="{ background: 'var(--brand-accent)', borderColor: 'var(--brand-accent)', color: '#000' }"
             >
-              <span>🎯</span>
               {{ tag }}
               <button type="button" class="tag-remove" @click="removeCustomTag(i)">×</button>
             </span>
@@ -194,7 +193,7 @@ const sportOptions = [
   { value: 'cricket',  label: 'Cricket',  emoji: '🏏' },
   { value: 'football', label: 'Football', emoji: '⚽' },
   { value: 'comedy',   label: 'Comedy',   emoji: '🎭' },
-  { value: 'others',   label: 'Others',   emoji: '🎯' },
+  { value: 'others',   label: 'Others',   emoji: '' },
 ];
 
 const othersText     = ref('');
