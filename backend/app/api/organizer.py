@@ -4,7 +4,6 @@ from app.extensions import db
 from app.models.event import Event
 from app.models.registration import Registration
 from app.models.user import User
-from app.services.algolia_sync import AlgoliaSyncService
 from app.utils.decorators import role_required
 from sqlalchemy import func
 
@@ -105,7 +104,6 @@ class FeatureEvent(Resource):
             
         event.is_featured = not event.is_featured
         db.session.commit()
-        AlgoliaSyncService().index_event(event)
         
         return {
             'message': 'Event feature status toggled', 

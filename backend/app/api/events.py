@@ -5,12 +5,10 @@ from app.extensions import db
 from app.models.event import Event
 from app.models.user import User
 from app.services.recommendation import RecommendationService
-from app.services.algolia_sync import AlgoliaSyncService
 from app.utils.decorators import role_required
 from datetime import datetime
 
 events_ns = Namespace('events', description='Event operations')
-algolia_service = AlgoliaSyncService()
 
 @events_ns.route('')
 class EventList(Resource):
@@ -56,7 +54,6 @@ class EventList(Resource):
                 is_active=True
             )
             event.save()  # Computes price_tier and commits
-            algolia_service.index_event(event)
             return event.to_dict(), 201
         except Exception as e:
             db.session.rollback()
@@ -99,7 +96,6 @@ class EventDetail(Resource):
         event.tags = data.get('tags', event.tags)
 
         event.save()
-        algolia_service.index_event(event)
         return event.to_dict(), 200
 
     @jwt_required()
@@ -117,7 +113,6 @@ class EventDetail(Resource):
 
         event.is_active = False
         db.session.commit()
-        algolia_service.remove_event(event.id)
         return {'message': 'Event deleted'}, 200
 
 
