@@ -59,38 +59,107 @@
           </template>
         </template>
 
-        <!-- Authenticated -->
+        <!-- Authenticated — profile dropdown -->
         <template v-else>
-          <router-link
-            v-if="authStore.isUser"
-            to="/home"
-            class="font-bold tracking-widest uppercase text-xs transition-colors decoration-transparent"
-            :style="{ color: isDark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.75)' }"
-          >Browse</router-link>
+          <div class="profile-menu-wrap" ref="menuRef">
+            <!-- Trigger button -->
+            <button class="profile-trigger" @click="menuOpen = !menuOpen" :aria-expanded="menuOpen">
+              <!-- Avatar circle with initial -->
+              <span class="profile-avatar">
+                {{ (authStore.userObj?.name || authStore.role || '?')[0].toUpperCase() }}
+              </span>
+              <span class="profile-name" :style="{ color: isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.85)' }">
+                {{ authStore.userObj?.name || authStore.role }}
+              </span>
+              <svg class="profile-chevron" :class="{ 'profile-chevron--open': menuOpen }"
+                width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round"
+                :style="{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
 
-          <router-link
-            v-if="authStore.isOrganizer"
-            to="/organizer"
-            class="font-bold tracking-widest uppercase text-xs transition-colors decoration-transparent"
-            :style="{ color: isDark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.75)' }"
-          >Dashboard</router-link>
+            <!-- Dropdown panel -->
+            <transition name="dropdown">
+              <div v-if="menuOpen" class="profile-dropdown">
 
-          <router-link
-            v-if="authStore.isAdmin"
-            to="/admin"
-            class="font-bold tracking-widest uppercase text-xs transition-colors decoration-transparent"
-            :style="{ color: isDark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.75)' }"
-          >Admin</router-link>
+                <!-- Header: avatar + name + email -->
+                <div class="dropdown-header">
+                  <div class="dropdown-avatar">
+                    {{ (authStore.userObj?.name || authStore.role || '?')[0].toUpperCase() }}
+                  </div>
+                  <div class="dropdown-identity">
+                    <p class="dropdown-display-name">{{ authStore.userObj?.name || 'User' }}</p>
+                    <p class="dropdown-email">{{ authStore.userObj?.email || '' }}</p>
+                  </div>
+                </div>
 
-          <button
-            @click="handleLogout"
-            class="px-8 py-3 rounded-full font-black tracking-wider uppercase text-sm transition-all duration-300"
-            :style="{
-              border: '1px solid #ff007f',
-              color: '#ff007f',
-              background: 'transparent',
-            }"
-          >Logout</button>
+                <div class="dropdown-divider"></div>
+
+                <!-- Menu items — role-specific -->
+                <nav class="dropdown-nav">
+
+                  <!-- Profile — all roles -->
+                  <router-link to="/profile" class="dropdown-item" @click="menuOpen = false">
+                    <span class="item-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                      </svg>
+                    </span>
+                    Profile
+                  </router-link>
+
+                  <!-- Wallet — user + admin only -->
+                  <router-link v-if="authStore.isUser || authStore.isAdmin" to="/wallet" class="dropdown-item" @click="menuOpen = false">
+                    <span class="item-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+                      </svg>
+                    </span>
+                    Wallet
+                  </router-link>
+
+                  <!-- Events — all roles -->
+                  <router-link :to="authStore.isUser ? '/home' : authStore.isOrganizer ? '/organizer' : '/admin'"
+                    class="dropdown-item" @click="menuOpen = false">
+                    <span class="item-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                      </svg>
+                    </span>
+                    Events
+                  </router-link>
+
+                  <!-- Dashboard — all roles, label changes -->
+                  <router-link
+                    :to="authStore.isAdmin ? '/admin' : authStore.isOrganizer ? '/organizer' : '/home'"
+                    class="dropdown-item" @click="menuOpen = false">
+                    <span class="item-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                      </svg>
+                    </span>
+                    Dashboard
+                  </router-link>
+
+                </nav>
+
+                <div class="dropdown-divider"></div>
+
+                <!-- Logout -->
+                <button class="dropdown-logout" @click="handleLogout">
+                  <span class="item-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                  </span>
+                  Logout
+                </button>
+
+              </div>
+            </transition>
+          </div>
         </template>
       </div>
 
@@ -213,35 +282,39 @@ const route  = useRoute();
 const authStore = useAuthStore();
 const isScrolled = ref(false);
 const isDark = ref(true);
+const menuOpen = ref(false);
+const menuRef  = ref<HTMLElement | null>(null);
 
 const currentYear = computed(() => new Date().getFullYear());
-
-// true when on /login or /register — used to trim navbar links
 const onAuthPage = computed(() => ['/login', '/register'].includes(route.path));
 
-// ── Theme persistence ──
+// Close dropdown when clicking outside
+const handleClickOutside = (e: MouseEvent) => {
+  if (menuRef.value && !menuRef.value.contains(e.target as Node)) {
+    menuOpen.value = false;
+  }
+};
+
 const applyTheme = (dark: boolean) => {
   isDark.value = dark;
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
   localStorage.setItem('livesports_theme', dark ? 'dark' : 'light');
 };
 
-const toggleTheme = () => {
-  applyTheme(!isDark.value);
-};
-
-const handleScroll = () => {
-  isScrolled.value = window.scrollY > 20;
-};
+const toggleTheme = () => applyTheme(!isDark.value);
+const handleScroll = () => { isScrolled.value = window.scrollY > 20; };
 
 onMounted(() => {
   authStore.initializeAuth();
+  if (authStore.isAuthenticated) authStore.fetchProfile();
   window.addEventListener('scroll', handleScroll);
+  document.addEventListener('click', handleClickOutside);
   const saved = localStorage.getItem('livesports_theme') || 'dark';
   applyTheme(saved === 'dark');
 });
 
 const handleLogout = () => {
+  menuOpen.value = false;
   authStore.logout();
   router.push('/');
 };
@@ -469,5 +542,241 @@ const handleLogout = () => {
 
 [data-theme="light"] .theme-toggle-btn:hover {
   background: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ══════════════════════════════════════════
+   PROFILE DROPDOWN
+══════════════════════════════════════════ */
+.profile-menu-wrap {
+  position: relative;
+}
+
+/* Trigger button */
+.profile-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 9999px;
+  padding: 0.35rem 0.75rem 0.35rem 0.35rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.profile-trigger:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.25);
+}
+
+[data-theme="light"] .profile-trigger {
+  background: rgba(0,0,0,0.05);
+  border-color: rgba(0,0,0,0.15);
+}
+
+[data-theme="light"] .profile-trigger:hover {
+  background: rgba(0,0,0,0.08);
+}
+
+.profile-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--brand-accent);
+  color: #000;
+  font-size: 0.75rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-chevron {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.profile-chevron--open {
+  transform: rotate(180deg);
+}
+
+/* Dropdown panel */
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 240px;
+  background: #18181b;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  z-index: 200;
+}
+
+[data-theme="light"] .profile-dropdown {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+}
+
+/* Header */
+.dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.75rem;
+}
+
+.dropdown-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--brand-accent);
+  color: #000;
+  font-size: 0.9rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dropdown-identity { overflow: hidden; }
+
+.dropdown-display-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme="light"] .dropdown-display-name { color: #0f172a; }
+
+.dropdown-email {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme="light"] .dropdown-email { color: #64748b; }
+
+/* Divider */
+.dropdown-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+  margin: 0.25rem 0;
+}
+
+[data-theme="light"] .dropdown-divider { background: #e2e8f0; }
+
+/* Nav items */
+.dropdown-nav {
+  padding: 0.35rem 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.75);
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease;
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background: rgba(255,255,255,0.07);
+  color: #ffffff;
+}
+
+[data-theme="light"] .dropdown-item { color: #374151; }
+[data-theme="light"] .dropdown-item:hover { background: #f1f5f9; color: #0f172a; }
+
+/* Active route highlight */
+.dropdown-item.router-link-active {
+  background: rgba(0,243,255,0.08);
+  color: var(--brand-accent);
+}
+
+[data-theme="light"] .dropdown-item.router-link-active {
+  background: rgba(3,105,161,0.08);
+  color: #0369a1;
+}
+
+/* Icon wrapper */
+.item-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.12s ease;
+}
+
+.dropdown-item:hover .item-icon {
+  background: rgba(255,255,255,0.12);
+}
+
+[data-theme="light"] .item-icon { background: #f1f5f9; }
+[data-theme="light"] .dropdown-item:hover .item-icon { background: #e2e8f0; }
+
+/* Logout button */
+.dropdown-logout {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.65rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ff007f;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  font-family: inherit;
+  margin-bottom: 0.25rem;
+}
+
+.dropdown-logout:hover { background: rgba(255,0,127,0.08); }
+
+.dropdown-logout .item-icon {
+  background: rgba(255,0,127,0.1);
+  color: #ff007f;
+}
+
+.dropdown-logout:hover .item-icon { background: rgba(255,0,127,0.18); }
+
+/* Slide-down animation */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.97);
 }
 </style>
