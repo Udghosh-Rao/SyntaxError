@@ -7,12 +7,11 @@ from datetime import datetime, timedelta
 
 class RecommendationService:
     """
-    Priority stack (Features 1-4):
-      1. Preferred sports match   (+4)
-      2. City match               (+3)
-      3. Budget tier match        (+2)
-      4. Within next 7 days       (+1)
-      5. Fallback: popular (registration count)
+    Priority stack:
+      1. Preferred sports match   (+45)
+      2. City match               (+45)
+      3. Within next 7 days       (+10)
+      4. Fallback: popular (registration count)
     """
 
     @staticmethod
@@ -29,21 +28,17 @@ class RecommendationService:
 
         now = datetime.utcnow()
 
-        if user and (user.preferred_sports or user.city or user.budget_preference):
+        if user and (user.preferred_sports or user.city):
             sports = user.preferred_sports or []
             city = user.city
-            budget = user.budget_preference
 
-            # F1: Preferred sports match (+40)
-            sport_score = case((Event.sport_category.in_(sports), 40), else_=0) if sports else 0
+            # Sport match (+45)
+            sport_score = case((Event.sport_category.in_(sports), 45), else_=0) if sports else 0
 
-            # F2: City match (+30)
-            city_score = case((Event.venue_city == city, 30), else_=0) if city else 0
+            # City match (+45)
+            city_score = case((Event.venue_city == city, 45), else_=0) if city else 0
 
-            # F4: Budget match (+20)
-            budget_score = case((Event.price_tier == budget, 20), else_=0) if budget else 0
-
-            # F3: Within next 7 days (+10)
+            # Within next 7 days (+10)
             week_end = now + timedelta(days=7)
             date_score = case((db.and_(Event.event_date >= now, Event.event_date <= week_end), 10), else_=0)
 
@@ -52,8 +47,6 @@ class RecommendationService:
                 total_score = total_score + sport_score
             if city:
                 total_score = total_score + city_score
-            if budget:
-                total_score = total_score + budget_score
 
             # Sort by total preference score, then fallback to popularity (cnt), then proximity to current date
             q = q.order_by(
