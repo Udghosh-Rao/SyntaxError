@@ -107,19 +107,24 @@ def make_event(organizer_id: int, title: str, sport_category: str,
 
 
 def create_registration(user_id: int, event_id: int,
-                        status: str = 'confirmed') -> Registration:
+                        status: str = 'confirmed',
+                        created_at: datetime | None = None) -> Registration:
     """Construct a Registration instance."""
-    return Registration(
+    reg = Registration(
         user_id=user_id,
         event_id=event_id,
         status=status,
         role='athlete',
         role_details={},
     )
+    if created_at:
+        reg.created_at = created_at
+    return reg
 
 
 def create_payment(registration_id: int, amount: float,
-                   paid: bool = True) -> Payment:
+                   paid: bool = True,
+                   created_at: datetime | None = None) -> Payment:
     """
     Construct a Payment instance.
     paid=True  → status='paid'   (normal confirmed booking)
@@ -128,7 +133,7 @@ def create_payment(registration_id: int, amount: float,
     """
     fee = round(amount * 0.15, 2)
     payout = round(amount - fee, 2)
-    return Payment(
+    payment = Payment(
         registration_id=registration_id,
         razorpay_order_id=f'order_seed_{registration_id}',
         razorpay_payment_id=f'pay_seed_{registration_id}' if paid else None,
@@ -138,10 +143,14 @@ def create_payment(registration_id: int, amount: float,
         organizer_payout=payout,
         status='paid' if paid else 'created',
     )
+    if created_at:
+        payment.created_at = created_at
+    return payment
 
 
 def safe_register(user: User, event: Event,
-                  status: str = 'confirmed') -> Registration | None:
+                  status: str = 'confirmed',
+                  created_at: datetime | None = None) -> Registration | None:
     """
     Register a user for an event with guards:
       • Skip if event is at capacity
@@ -162,13 +171,16 @@ def safe_register(user: User, event: Event,
     if existing:
         return None
 
-    reg = create_registration(user.id, event.id, status=status)
+    reg = create_registration(user.id, event.id, status=status, created_at=created_at)
     db.session.add(reg)
     db.session.commit()   # commit so reg.id is available for payment FK
 
     # Payment record for paid events with confirmed status
     if event.price > 0 and status == 'confirmed':
-        payment = create_payment(reg.id, event.price, paid=True)
+        payment_created_at = None
+        if created_at:
+            payment_created_at = created_at + timedelta(minutes=random.randint(1, 180))
+        payment = create_payment(reg.id, event.price, paid=True, created_at=payment_created_at)
         db.session.add(payment)
         db.session.commit()
 
@@ -763,6 +775,63 @@ def seed_database():
                     total_regs += 1
                     if event.price > 0:
                         total_payments += 1
+
+        # Extra randomized historical bookings across existing users/events.
+        # This improves daily/weekly graph trends without creating new users.
+        now_utc = datetime.utcnow()
+        random_historical_target = 40
+        random_historical_added = 0
+        randomized_users = users[:20]  # exclude cold-start users (indices 20, 21)
+        reserved_pairs = {
+            (0, 8),   # Rahul + Trail Cycling reserved for pending edge case
+            (5, 9),   # Ananya + Zen Yoga reserved for cancelled edge case
+        }
+
+        shuffled_users = randomized_users.copy()
+        random.shuffle(shuffled_users)
+
+        for user in shuffled_users:
+            if random_historical_added >= random_historical_target:
+                break
+
+            candidate_events = events.copy()
+            random.shuffle(candidate_events)
+
+            # 1 to 3 additional bookings per user if available
+            max_for_user = random.randint(1, 3)
+            added_for_user = 0
+
+            for event in candidate_events:
+                if random_historical_added >= random_historical_target or added_for_user >= max_for_user:
+                    break
+
+                if event.seats_remaining <= 0:
+                    continue
+
+                if Registration.query.filter_by(user_id=user.id, event_id=event.id).first():
+                    continue
+
+                user_idx = users.index(user)
+                event_idx = events.index(event)
+                if (user_idx, event_idx) in reserved_pairs:
+                    continue
+
+                random_days_ago = random.randint(0, 29)
+                random_minutes = random.randint(0, 1439)
+                created_at = now_utc - timedelta(days=random_days_ago, minutes=random_minutes)
+
+                reg = safe_register(user, event, status='confirmed', created_at=created_at)
+                if reg:
+                    random_historical_added += 1
+                    total_regs += 1
+                    if event.price > 0:
+                        total_payments += 1
+                    added_for_user += 1
+
+        print(
+            f'  -> Added {random_historical_added} randomized confirmed bookings '
+            f'with created_at spread over last 30 days'
+        )
 
         # ─────────────────────────────────────────────────────────────────
         # 6. EDGE CASES

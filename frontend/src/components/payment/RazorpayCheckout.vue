@@ -1,53 +1,80 @@
 <template>
-  <div class="checkout-modal animate-corp" v-if="isOpen">
-    <div class="luxury-bg-mesh">
-      <div class="aura-blob aura-1"></div>
-      <div class="aura-blob aura-2"></div>
-    </div>
-    
-    <div class="card-premium checkout-card animate-corp">
-      <div class="checkout-header mb-10">
-        <div class="header-text">
-          <span class="badge-corp">Secure Payment</span>
-          <h3 class="hero-title-small mt-4">Complete Registration</h3>
+  <div class="checkout-modal" v-if="isOpen">
+    <div class="modal-backdrop" @click.self="handleBackdropClick" />
+
+    <div class="checkout-card">
+      <!-- Header -->
+      <div class="checkout-header">
+        <div class="header-left">
+          <span class="secure-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Secure Payment
+          </span>
+          <h3 class="modal-title">Complete Registration</h3>
         </div>
-        <button class="close-btn-corp" @click="$emit('close')">&times;</button>
+        <button class="close-btn" @click="$emit('close')" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
-      
-      <div class="order-telemetry mb-10">
-        <div class="meta-item-corp mb-4">
-          <span class="label-muted">Order ID</span>
-          <span class="value font-800">{{ orderData.order_id }}</span>
+
+      <!-- Order summary -->
+      <div class="order-summary">
+        <div class="order-id-row">
+          <span class="field-label">Order Reference</span>
+          <span class="order-id-val">{{ orderData.order_id }}</span>
         </div>
-        <div class="meta-item-corp">
-          <span class="label-muted">Amount</span>
-          <span class="value text-gradient font-950 text-3xl">₹{{ (orderData.amount / 100).toLocaleString() }}</span>
+
+        <!-- Price breakdown (only shown when discounts/wallet apply) -->
+        <div v-if="(orderData.discount_amount ?? 0) > 0 || (orderData.wallet_used ?? 0) > 0" class="breakdown-block">
+          <div class="breakdown-row">
+            <span>Base Price</span>
+            <span>₹{{ basePriceDisplay }}</span>
+          </div>
+          <div v-if="(orderData.discount_amount ?? 0) > 0" class="breakdown-row breakdown-row--discount">
+            <span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Referral Discount (5%)
+            </span>
+            <span>−₹{{ (orderData.discount_amount ?? 0).toFixed(2) }}</span>
+          </div>
+          <div v-if="(orderData.wallet_used ?? 0) > 0" class="breakdown-row breakdown-row--wallet">
+            <span>🪙 Wallet Credit</span>
+            <span>−₹{{ (orderData.wallet_used ?? 0).toFixed(2) }}</span>
+          </div>
+          <div class="breakdown-divider" />
+        </div>
+
+        <!-- Final amount -->
+        <div class="amount-block">
+          <span class="field-label">{{ (orderData.wallet_used ?? 0) > 0 ? 'Amount via Razorpay' : 'Total Amount' }}</span>
+          <span class="amount-value">₹{{ (orderData.final_price ?? (orderData.amount / 100)).toFixed(2) }}</span>
         </div>
       </div>
 
-      <div class="simulation-panel p-8 border-luxury">
-        <h4 class="label-muted mb-4">Powered by Razorpay</h4>
-        <p class="text-dim text-sm mb-8">
-          You will be redirected to a secure Razorpay payment page.
-          Supports UPI, Cards, Net Banking, and Wallets.
-        </p>
-        
-        <button 
-          class="btn-corp btn-corp-primary w-full py-4" 
+      <!-- Pay action -->
+      <div class="pay-section">
+        <div class="rzp-branding">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Powered by Razorpay · UPI, Cards, Net Banking & more
+        </div>
+
+        <button
+          class="pay-btn"
           @click="openRazorpay"
           :disabled="processing || !razorpayLoaded"
         >
-          {{ processing ? 'Processing...' : !razorpayLoaded ? 'Loading...' : 'Pay Now' }}
+          <span v-if="processing" class="btn-spinner" />
+          {{ processing ? 'Verifying…' : !razorpayLoaded ? 'Loading…' : `Pay ₹${(orderData.final_price ?? (orderData.amount / 100)).toFixed(2)}` }}
         </button>
-        
-        <p v-if="errorMsg" class="text-red-400 text-sm mt-4 text-center">{{ errorMsg }}</p>
+
+        <p v-if="errorMsg" class="error-inline">{{ errorMsg }}</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { useAuthStore } from '../../stores/auth';
 
@@ -57,6 +84,9 @@ const props = defineProps<{
     order_id: string;
     amount: number;
     key_id: string;
+    final_price?: number;
+    discount_amount?: number;
+    wallet_used?: number;
   };
   eventId: string;
 }>();
@@ -67,13 +97,21 @@ const processing = ref(false);
 const razorpayLoaded = ref(false);
 const errorMsg = ref('');
 
-// Dynamically load Razorpay checkout.js script
+const basePriceDisplay = computed(() => {
+  const base = (props.orderData.final_price ?? 0)
+    + (props.orderData.discount_amount ?? 0)
+    + (props.orderData.wallet_used ?? 0);
+  return base.toFixed(2);
+});
+
+const handleBackdropClick = () => {
+  // Backdrop click counts as dismissal — emit error so wallet refund fires
+  emit('error', 'Payment was not completed. Please try again.');
+};
+
 const loadRazorpayScript = (): Promise<void> => {
   return new Promise((resolve, reject) => {
-    if ((window as any).Razorpay) {
-      resolve(); // Already loaded
-      return;
-    }
+    if ((window as any).Razorpay) { resolve(); return; }
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.onload = () => resolve();
@@ -86,25 +124,21 @@ onMounted(async () => {
   try {
     await loadRazorpayScript();
     razorpayLoaded.value = true;
-  } catch (err) {
+  } catch {
     errorMsg.value = 'Could not load payment SDK. Check your connection.';
   }
 });
 
 const openRazorpay = () => {
   errorMsg.value = '';
-  
   const options = {
-    key: props.orderData.key_id,          // Your rzp_test_... key from backend
-    amount: props.orderData.amount,        // Amount in paise
+    key: props.orderData.key_id,
+    amount: props.orderData.amount,
     currency: 'INR',
     name: 'SyntaxError Events',
     description: 'Event Registration',
-    order_id: props.orderData.order_id,    // Razorpay order_id from backend
-
+    order_id: props.orderData.order_id,
     handler: async function (response: any) {
-      // This fires after successful payment on Razorpay's side
-      // Now verify signature on your backend
       processing.value = true;
       try {
         const res = await axios.post(
@@ -123,105 +157,267 @@ const openRazorpay = () => {
         processing.value = false;
       }
     },
-
     prefill: {
       name: (authStore.user as any)?.name || '',
       email: (authStore.user as any)?.email || '',
     },
-
-    theme: {
-      color: '#0070f3',
-    },
-
+    theme: { color: '#0070f3' },
     modal: {
       ondismiss: () => {
-        // User closed the Razorpay popup without paying
-        emit('close');
+        emit('error', 'Payment was not completed. Please try again.');
       },
     },
   };
-
   const rzp = new (window as any).Razorpay(options);
-
   rzp.on('payment.failed', (response: any) => {
     emit('error', response.error?.description || 'Payment failed.');
   });
-
   rzp.open();
 };
 </script>
 
 <style scoped>
+/* ── Overlay ── */
 .checkout-modal {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  inset: 0;
   z-index: 2000;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: fade-in 0.18s ease;
 }
 
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(10px);
+}
+
+/* ── Card ── */
 .checkout-card {
-  width: 100%;
-  max-width: 500px;
-  padding: 4rem;
   position: relative;
-  z-index: 10;
+  z-index: 1;
+  width: 100%;
+  max-width: 460px;
+  background: var(--bg-panel-solid);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255,255,255,0.04);
+  animation: slide-up 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+[data-theme="light"] .checkout-card {
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.06);
+}
+
+/* ── Header ── */
 .checkout-header {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.75rem 1.75rem 0;
 }
 
-.close-btn-corp {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  color: var(--text-dim);
-  cursor: pointer;
-  line-height: 0.5;
-  transition: color 0.3s;
+.header-left { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.secure-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-primary);
+  background: color-mix(in srgb, var(--brand-primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 25%, transparent);
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  width: fit-content;
 }
 
-.close-btn-corp:hover {
-  color: white;
+.modal-title {
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+  line-height: 1.1;
 }
 
-.order-telemetry {
-  background: rgba(255, 255, 255, 0.02);
-  padding: 2.5rem;
-  border-radius: var(--radius-md);
+.close-btn {
+  background: var(--bg-panel-light);
   border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.close-btn:hover { background: var(--border-subtle); color: var(--text-primary); }
+
+/* ── Order summary block ── */
+.order-summary {
+  margin: 1.25rem 1.75rem;
+  background: var(--bg-panel-light);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-.meta-item-corp {
+.order-id-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.field-label {
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.order-id-val {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.04em;
+}
+
+/* ── Price breakdown ── */
+.breakdown-block {
+  padding: 0.85rem 1.1rem 0;
   display: flex;
   flex-direction: column;
+  gap: 0.45rem;
 }
 
-.text-3xl { font-size: 2rem; }
-.font-800 { font-weight: 800; }
-.font-950 { font-weight: 950; }
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  gap: 0.5rem;
+}
 
-.simulation-panel {
-  background: rgba(0, 112, 243, 0.03);
-  border-radius: var(--radius-md);
+.breakdown-row span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.breakdown-row--discount { color: #22c55e; }
+.breakdown-row--wallet   { color: var(--brand-accent); }
+
+.breakdown-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin-top: 0.5rem;
+}
+
+/* ── Amount block ── */
+.amount-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.1rem;
+}
+
+.amount-value {
+  font-size: 1.9rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--brand-primary);
+  line-height: 1;
+}
+
+/* ── Pay section ── */
+.pay-section {
+  padding: 0 1.75rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.rzp-branding {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  justify-content: center;
+}
+
+.pay-btn {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 12px;
+  border: none;
+  background: var(--brand-primary);
+  color: #000;
+  font-size: 1rem;
+  font-weight: 900;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pay-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--brand-primary) 35%, transparent);
+}
+
+.pay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0,0,0,0.3);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-inline {
+  font-size: 0.8rem;
+  color: #f87171;
   text-align: center;
+  line-height: 1.4;
 }
-
-.border-luxury {
-  border: 1px solid rgba(0, 112, 243, 0.1);
-}
-
-.hero-title-small {
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: -0.05em;
-}
-
-.text-red-400 { color: #f87171; }
 </style>

@@ -19,7 +19,7 @@ const isLight = () => document.documentElement.getAttribute('data-theme') === 'l
 
 const colors = () => ({
   legend:      isLight() ? 'rgba(15,23,42,0.9)'  : 'rgba(255,255,255,0.8)',
-  legendWeight:'700' as const,
+  legendWeight:'bold' as const,
   title:       isLight() ? 'rgba(15,23,42,0.8)'  : 'rgba(255,255,255,0.6)',
   segBorder:   isLight() ? '#f1f5f9'              : 'rgba(0,0,0,0.35)',
   segBorderW:  isLight() ? 3                      : 1,
@@ -29,8 +29,8 @@ const renderChart = () => {
   if (!chartCanvas.value || !props.data?.length) return;
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
-  const labels  = props.data.map(d => d.category);
-  const values  = props.data.map(d => d.registrations);
+  const labels  = props.data.map((d: any) => d.sport_category || d.category);
+  const values  = props.data.map((d: any) => d.registration_count ?? d.registrations);
   const palette = ['#0070f3','#00dfd8','#ff0080','#7928ca','#ffab00','#36A2EB','#FF6384','#4BC0C0'];
   const c = colors();
 
@@ -59,7 +59,7 @@ const renderChart = () => {
           display: true,
           text: 'Sport Category Distribution',
           color: c.title,
-          font: { size: 12, weight: '700' },
+          font: { size: 12, weight: 'bold' },
         },
       },
     },

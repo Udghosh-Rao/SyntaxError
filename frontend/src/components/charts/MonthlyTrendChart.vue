@@ -35,6 +35,14 @@ const renderChart = () => {
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const labels = props.data.map(d => `${monthNames[d.month - 1]} ${d.year}`);
   const counts = props.data.map(d => d.count);
+
+  if (labels.length === 1) {
+    const d = props.data[0];
+    const prevM = d.month === 1 ? 12 : d.month - 1;
+    const prevY = d.month === 1 ? d.year - 1 : d.year;
+    labels.unshift(`${monthNames[prevM - 1]} ${prevY}`);
+    counts.unshift(0);
+  }
   const c = colors();
 
   chartInstance = new Chart(chartCanvas.value, {

@@ -100,6 +100,18 @@
                 <!-- Menu items — role-specific -->
                 <nav class="dropdown-nav">
 
+                  <!-- Home — role-aware shortcut -->
+                  <router-link
+                    :to="authStore.isAdmin ? '/admin' : authStore.isOrganizer ? '/organizer' : '/home'"
+                    class="dropdown-item" @click="menuOpen = false">
+                    <span class="item-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                      </svg>
+                    </span>
+                    Home
+                  </router-link>
+
                   <!-- Profile — all roles -->
                   <router-link to="/profile" class="dropdown-item" @click="menuOpen = false">
                     <span class="item-icon">
@@ -111,17 +123,21 @@
                   </router-link>
 
                   <!-- Wallet — user + admin only -->
-                  <router-link v-if="authStore.isUser || authStore.isAdmin" to="/wallet" class="dropdown-item" @click="menuOpen = false">
-                    <span class="item-icon">
+                  <router-link v-if="authStore.isUser || authStore.isAdmin" to="/wallet" class="dropdown-item wallet-item" @click="menuOpen = false; fetchWalletBalance()">
+                    <span class="item-icon item-icon--wallet">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
                       </svg>
                     </span>
                     Wallet
+                    <span v-if="walletBalance !== null" class="wallet-badge">
+                      <span class="wallet-coin">🪙</span>
+                      <span class="wallet-amount">{{ walletBalance.toFixed(0) }}</span>
+                    </span>
                   </router-link>
 
                   <!-- Events — all roles -->
-                  <router-link :to="authStore.isUser ? '/home' : authStore.isOrganizer ? '/organizer' : '/admin'"
+                  <router-link :to="authStore.isUser ? '/events' : authStore.isOrganizer ? '/organizer/events' : '/admin'"
                     class="dropdown-item" @click="menuOpen = false">
                     <span class="item-icon">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -133,7 +149,7 @@
 
                   <!-- Dashboard — all roles, label changes -->
                   <router-link
-                    :to="authStore.isAdmin ? '/admin' : authStore.isOrganizer ? '/organizer' : '/home'"
+                    :to="authStore.isAdmin ? '/admin' : authStore.isOrganizer ? '/organizer/analytics' : '/dashboard'"
                     class="dropdown-item" @click="menuOpen = false">
                     <span class="item-icon">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -268,14 +284,17 @@
     </footer>
 
     <ChatbotWidget v-if="authStore.isAuthenticated" />
+    <ToastNotification />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import ChatbotWidget from './components/ChatbotWidget.vue';
+import ToastNotification from './components/ToastNotification.vue';
+import api from './services/api';
 
 const router = useRouter();
 const route  = useRoute();
@@ -284,9 +303,21 @@ const isScrolled = ref(false);
 const isDark = ref(true);
 const menuOpen = ref(false);
 const menuRef  = ref<HTMLElement | null>(null);
+const walletBalance = ref<number | null>(null);
 
 const currentYear = computed(() => new Date().getFullYear());
 const onAuthPage = computed(() => ['/login', '/register'].includes(route.path));
+
+const fetchWalletBalance = async () => {
+  if (!authStore.isAuthenticated || (!authStore.isUser && !authStore.isAdmin)) return;
+  try {
+    const res = await api.get('/wallet');
+    walletBalance.value = res.data.wallet?.balance ?? 0;
+  } catch { walletBalance.value = null; }
+};
+
+// Refresh wallet balance whenever the route changes (e.g. after checkout)
+watch(() => route.path, fetchWalletBalance);
 
 // Close dropdown when clicking outside
 const handleClickOutside = (e: MouseEvent) => {
@@ -304,13 +335,39 @@ const applyTheme = (dark: boolean) => {
 const toggleTheme = () => applyTheme(!isDark.value);
 const handleScroll = () => { isScrolled.value = window.scrollY > 20; };
 
+// ── 5-minute inactivity logout ──────────────────────────────
+const INACTIVITY_MS = 5 * 60 * 1000;
+let inactivityTimer: ReturnType<typeof setTimeout> | null = null;
+
+const resetTimer = () => {
+  if (!authStore.isAuthenticated) return;
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(() => {
+    authStore.logout();
+    router.push('/login');
+  }, INACTIVITY_MS);
+};
+
+const ACTIVITY_EVENTS = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'];
+
 onMounted(() => {
   authStore.initializeAuth();
-  if (authStore.isAuthenticated) authStore.fetchProfile();
+  if (authStore.isAuthenticated) {
+    authStore.fetchProfile();
+    fetchWalletBalance();
+    resetTimer();
+    ACTIVITY_EVENTS.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
+  }
   window.addEventListener('scroll', handleScroll);
   document.addEventListener('click', handleClickOutside);
   const saved = localStorage.getItem('livesports_theme') || 'dark';
   applyTheme(saved === 'dark');
+});
+
+onUnmounted(() => {
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+  ACTIVITY_EVENTS.forEach(e => window.removeEventListener(e, resetTimer));
+  document.removeEventListener('click', handleClickOutside);
 });
 
 const handleLogout = () => {
@@ -778,5 +835,53 @@ const handleLogout = () => {
 .dropdown-leave-to {
   opacity: 0;
   transform: translateY(-6px) scale(0.97);
+}
+
+/* ── Wallet badge ── */
+.wallet-item {
+  justify-content: flex-start;
+}
+
+.wallet-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(234, 179, 8, 0.15);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: 9999px;
+  padding: 2px 8px 2px 5px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #eab308;
+  line-height: 1;
+  transition: background 0.15s ease;
+}
+
+.wallet-item:hover .wallet-badge {
+  background: rgba(234, 179, 8, 0.25);
+}
+
+[data-theme="light"] .wallet-badge {
+  background: rgba(161, 98, 7, 0.1);
+  border-color: rgba(161, 98, 7, 0.3);
+  color: #a16207;
+}
+
+.wallet-coin { font-size: 0.75rem; }
+.wallet-amount { letter-spacing: -0.01em; }
+
+.item-icon--wallet {
+  background: rgba(234, 179, 8, 0.1);
+  color: #eab308;
+}
+
+.dropdown-item:hover .item-icon--wallet {
+  background: rgba(234, 179, 8, 0.2);
+}
+
+[data-theme="light"] .item-icon--wallet {
+  background: rgba(161, 98, 7, 0.1);
+  color: #a16207;
 }
 </style>

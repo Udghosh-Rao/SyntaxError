@@ -19,6 +19,7 @@ class User(db.Model):
     city              = db.Column(db.String(100), nullable=True)
     budget_preference = db.Column(db.String(20), default='mid')
     preferred_sports  = db.Column(db.JSON, nullable=True)
+    avatar_url        = db.Column(db.String(500), nullable=True)
     created_at        = db.Column(db.DateTime, server_default=db.func.now())
 
     # ── Referral system ──────────────────────────────────────────────────────
@@ -49,6 +50,7 @@ class User(db.Model):
             'city':              self.city,
             'budget_preference': self.budget_preference,
             'preferred_sports':  self.preferred_sports or [],
+            'avatar_url':        self.avatar_url,
             'referral_code':     self.referral_code,
             'referred_by_id':    self.referred_by_id,
             'referral_count':    len(self.referrals),

@@ -73,6 +73,42 @@ const router = createRouter({
       name: 'my-registrations',
       component: () => import('../views/MyRegistrations.vue'),
       meta: { requiresAuth: true, role: 'user' }
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/ProfileView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/wallet',
+      name: 'wallet',
+      component: () => import('../views/WalletView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/events',
+      name: 'user-events',
+      component: () => import('../views/UserEventsView.vue'),
+      meta: { requiresAuth: true, role: 'user' }
+    },
+    {
+      path: '/organizer/events',
+      name: 'organizer-events',
+      component: () => import('../views/OrganizerEventsView.vue'),
+      meta: { requiresAuth: true, role: 'organizer' }
+    },
+    {
+      path: '/dashboard',
+      name: 'user-dashboard',
+      component: () => import('../views/UserDashboardView.vue'),
+      meta: { requiresAuth: true, role: 'user' }
+    },
+    {
+      path: '/organizer/analytics',
+      name: 'organizer-analytics',
+      component: () => import('../views/OrganizerDashboardView.vue'),
+      meta: { requiresAuth: true, role: 'organizer' }
     }
   ]
 })
@@ -88,8 +124,8 @@ router.beforeEach((to, _from, next) => {
     if (userRole === 'admin') next('/admin')
     else if (userRole === 'organizer') next('/organizer')
     else next('/home')
-  } else if (to.meta.role && to.meta.role !== userRole) {
-    // Role mismatch (e.g. user trying to access admin dashboard)
+  } else if (to.meta.role && to.meta.role !== userRole && userRole !== 'admin') {
+    // Role mismatch — admin can access anything
     next('/')
   } else {
     next()

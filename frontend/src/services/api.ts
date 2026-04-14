@@ -60,8 +60,10 @@ export const registrationApi = {
 };
 
 export const paymentApi = {
-  createOrder: (data: { event_id: number | string }) =>
+  createOrder: (data: { event_id: number | string; referral_code?: string; wallet_used?: number }) =>
     api.post('/payments/create-order', data),
+  failOrder: (data: { order_id: string }) =>
+    api.post('/payments/fail', data),
 };
 
 export const adminApi = {
@@ -79,6 +81,18 @@ export const organizerApi = {
   getCategoryInsight: () => api.get('/organizer/category-insight'),
   toggleFeature: (id: string | number) => api.post(`/organizer/events/${id}/feature`, {}),
   getTrend: (id: string | number) => api.get(`/organizer/trend/${id}`),
+};
+
+export const walletApi = {
+  get:         ()           => api.get('/wallet'),
+  addFunds:    (amount: number) => api.post('/wallet/add-funds', { amount }),
+  verifyTopup: (data: any)  => api.post('/wallet/verify-topup', data),
+};
+
+export const referralApi = {
+  validate: (code: string, price: number) =>
+    api.post('/registrations/validate-referral', { referral_code: code, price }),
+  myReferrals: () => api.get('/auth/my-referrals'),
 };
 
 export default api;

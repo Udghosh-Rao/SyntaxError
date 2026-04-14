@@ -70,14 +70,47 @@
             </template>
 
             <template v-else-if="authStore.isUser">
-              <div v-if="registrationStatus" class="status-panel-corp">
+              <!-- Confirmed: show status + cancel button -->
+              <div v-if="registrationStatus === 'confirmed'" class="status-panel-corp">
                 <div class="status-info">
                   <label class="stat-label stat-label--cyan">ENTRY STATUS</label>
-                  <p class="status-text">{{ registrationStatus.toUpperCase() }}</p>
+                  <p class="status-text">CONFIRMED</p>
                 </div>
-                <button v-if="registrationStatus === 'confirmed'" @click="cancelRegistration" class="btn-cancel-ticket">
+                <!-- Inline cancel confirmation -->
+                <div v-if="showCancelConfirm" class="cancel-confirm-inline">
+                  <p class="cancel-confirm-text">
+                    ⚠️ Cancel this ticket? Any wallet amount used will be refunded.
+                  </p>
+                  <div class="cancel-confirm-actions">
+                    <button @click="cancelRegistration" class="btn-confirm-cancel">Yes, Cancel</button>
+                    <button @click="showCancelConfirm = false" class="btn-keep-ticket">Keep Ticket</button>
+                  </div>
+                </div>
+                <button v-else @click="showCancelConfirm = true" class="btn-cancel-ticket">
                   Cancel Ticket
                 </button>
+              </div>
+
+              <!-- Pending (payment initiated but not verified yet) -->
+              <div v-else-if="registrationStatus === 'pending'" class="status-panel-corp status-panel-corp--pending">
+                <div class="status-info">
+                  <label class="stat-label stat-label--cyan">ENTRY STATUS</label>
+                  <p class="status-text status-text--pending">PAYMENT PENDING</p>
+                </div>
+                <button @click="retryPayment" class="btn-retry-payment">
+                  Retry Payment
+                </button>
+              </div>
+
+              <!-- Payment failed: show notice + let user try again -->
+              <div v-else-if="registrationStatus === 'payment_failed'" class="status-panel-corp status-panel-corp--failed">
+                <div class="status-info w-full">
+                  <label class="stat-label" style="color:#ff007f">PAYMENT FAILED</label>
+                  <p class="status-text status-text--failed">Your payment did not go through. Any wallet amount used has been refunded.</p>
+                  <button @click="resetAndRegisterAgain" class="btn-book mt-4">
+                    Try Registering Again
+                  </button>
+                </div>
               </div>
 
               <div v-else-if="event.seats_remaining > 0" class="registration-form">
@@ -105,8 +138,55 @@
                   </select>
                 </div>
 
+                <!-- Referral code -->
+                <div v-if="event.price > 0" class="input-stack mb-4">
+                  <label class="reg-field-label">REFERRAL CODE (OPTIONAL)</label>
+                  <div class="ref-input-row">
+                    <input type="text" v-model="regForm.referral_code" class="reg-input ref-input"
+                      placeholder="e.g. LS-A3FX92K1"
+                      @input="debouncedValidate"
+                      @blur="validateReferral" />
+                    <span v-if="referralLoading" class="ref-status ref-status--loading">…</span>
+                    <span v-else-if="referralMsg" class="ref-status"
+                      :class="referralValid ? 'ref-status--ok' : 'ref-status--err'">
+                      {{ referralMsg }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Wallet balance -->
+                <div v-if="event.price > 0 && walletBalance > 0" class="wallet-section mb-4">
+                  <label class="wallet-toggle">
+                    <input type="checkbox" v-model="regForm.use_wallet" class="wallet-checkbox" />
+                    <span class="wallet-label">
+                      Use wallet balance
+                      <strong class="wallet-bal">🪙 ₹{{ walletBalance.toFixed(2) }} available</strong>
+                    </span>
+                  </label>
+                </div>
+
+                <!-- Price summary -->
+                <div v-if="event.price > 0" class="price-summary">
+                  <div class="price-row">
+                    <span>Ticket Price</span>
+                    <span>₹{{ event.price }}</span>
+                  </div>
+                  <div v-if="referralValid && discountAmount > 0" class="price-row price-row--discount">
+                    <span>Referral Discount (5%)</span>
+                    <span>− ₹{{ discountAmount.toFixed(2) }}</span>
+                  </div>
+                  <div v-if="regForm.use_wallet && walletBalance > 0" class="price-row price-row--wallet">
+                    <span>Wallet Credit</span>
+                    <span>− ₹{{ walletDeduction.toFixed(2) }}</span>
+                  </div>
+                  <div class="price-row price-row--total">
+                    <span>You Pay</span>
+                    <strong>₹{{ finalPrice.toFixed(2) }}</strong>
+                  </div>
+                </div>
+
                 <button @click="submitRegistrationForm" class="btn-book w-full" :disabled="bookingInProgress">
-                  {{ bookingInProgress ? 'Processing Payment...' : 'Secure My Ticket' }}
+                  {{ bookingInProgress ? 'Processing...' : finalPrice === 0 ? 'Register Free' : `Pay ₹${finalPrice.toFixed(2)}` }}
                 </button>
               </div>
 
@@ -138,15 +218,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { eventApi, registrationApi, paymentApi } from '../services/api';
+import api from '../services/api';
 import RazorpayCheckout from '../components/payment/RazorpayCheckout.vue';
 import RecommendationRow from '../components/RecommendationRow.vue';
+import { useToast } from '../composables/useToast';
 
 const route = useRoute();
 const authStore = useAuthStore();
+const toast = useToast();
 
 const event = ref<any>(null);
 const loading = ref(true);
@@ -158,6 +241,7 @@ let pollInterval: any;
 const bookingInProgress = ref(false);
 const showCheckout = ref(false);
 const orderData = ref<any>(null);
+const showCancelConfirm = ref(false);
 
 const fetchEvent = async (isPolling = false) => {
   try {
@@ -179,40 +263,162 @@ const checkRegistrationStatus = async () => {
   } catch (e) { console.error('Failed to check reg status', e); }
 };
 
-const regForm = ref({ role: 'athlete', role_details: { team: '', service: 'catering' } });
+const regForm = ref({
+  role: 'athlete',
+  role_details: { team: '', service: 'catering' },
+  referral_code: '',
+  use_wallet: false,
+});
+
+// Referral validation
+const referralLoading = ref(false);
+const referralValid   = ref(false);
+const referralMsg     = ref('');
+const discountAmount  = ref(0);
+const walletBalance   = ref(0);
+
+// Computed price breakdown
+const walletDeduction = computed(() => {
+  if (!regForm.value.use_wallet || !walletBalance.value) return 0;
+  const afterDiscount = (event.value?.price ?? 0) - discountAmount.value;
+  return Math.min(walletBalance.value, afterDiscount);
+});
+
+const finalPrice = computed(() => {
+  const base = event.value?.price ?? 0;
+  return Math.max(0, base - discountAmount.value - walletDeduction.value);
+});
+
+// Fetch wallet balance on mount
+const fetchWallet = async () => {
+  try {
+    const res = await api.get('/wallet');
+    walletBalance.value = res.data.wallet?.balance ?? 0;
+  } catch { /* not logged in */ }
+};
+
+let validateTimer: any = null;
+const debouncedValidate = () => {
+  clearTimeout(validateTimer);
+  validateTimer = setTimeout(validateReferral, 600);
+};
+
+const validateReferral = async () => {
+  const code = regForm.value.referral_code.trim().toUpperCase();
+  if (!code) { referralMsg.value = ''; referralValid.value = false; discountAmount.value = 0; return; }
+  referralLoading.value = true;
+  try {
+    const res = await api.post('/registrations/validate-referral', {
+      referral_code: code,
+      price: event.value?.price ?? 0,
+    });
+    referralValid.value  = res.data.valid;
+    referralMsg.value    = res.data.message;
+    discountAmount.value = res.data.valid ? res.data.discount : 0;
+  } catch { referralMsg.value = 'Validation failed.'; referralValid.value = false; }
+  finally { referralLoading.value = false; }
+};
 
 const submitRegistrationForm = async () => {
   bookingInProgress.value = true;
   try {
-    await registrationApi.create({ event_id: event.value.id, role: regForm.value.role, role_details: regForm.value.role_details });
-    if (event.value.price === 0) { alert('Registration successful! (Free Event)'); bookingInProgress.value = false; fetchEvent(); return; }
+    const regData: any = {
+      event_id:      event.value.id,
+      role:          regForm.value.role,
+      role_details:  regForm.value.role_details,
+      referral_code: regForm.value.referral_code.trim().toUpperCase() || undefined,
+      use_wallet:    regForm.value.use_wallet,
+    };
+    await registrationApi.create(regData);
+    // If nothing to pay (free event or wallet covers full amount), skip payment gateway
+    if (finalPrice.value === 0) {
+      toast.success('Registration successful! You\'re in.');
+      bookingInProgress.value = false;
+      fetchEvent();
+      fetchWallet();
+      return;
+    }
     initiateBooking();
   } catch (err: any) {
     if (err.response?.data?.message === 'Already registered') {
-      event.value.price > 0 ? initiateBooking() : (alert('You are already registered!'), bookingInProgress.value = false);
-    } else { alert(err.response?.data?.message || 'Failed to submit registration'); bookingInProgress.value = false; }
+      // Only retry payment if there's actually an amount to pay
+      if (finalPrice.value > 0) {
+        initiateBooking();
+      } else {
+        toast.info('You are already registered for this event.');
+        bookingInProgress.value = false;
+      }
+    } else {
+      toast.error(err.response?.data?.message || 'Failed to submit registration.');
+      bookingInProgress.value = false;
+    }
   }
 };
 
 const initiateBooking = async () => {
   bookingInProgress.value = true;
   try {
-    const res = await paymentApi.createOrder({ event_id: event.value.id });
-    orderData.value = res.data; showCheckout.value = true;
-  } catch (err: any) { alert(err.response?.data?.message || 'Failed to initiate booking'); }
+    const res = await paymentApi.createOrder({
+      event_id:      event.value.id,
+      referral_code: regForm.value.referral_code?.trim().toUpperCase() || '',
+      wallet_used:   walletDeduction.value,
+    });
+    // Backend returns the discounted amount — use it in the checkout modal
+    orderData.value = res.data;
+    showCheckout.value = true;
+  } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to initiate booking.'); }
   finally { bookingInProgress.value = false; }
 };
 
-const handlePaymentSuccess = () => { showCheckout.value = false; alert('Payment successful! Your ticket is confirmed.'); fetchEvent(); };
-const handlePaymentError = (msg: string) => { showCheckout.value = false; alert(msg); };
-
-const cancelRegistration = async () => {
-  if (!confirm('Are you sure you want to cancel this ticket?')) return;
-  try { await registrationApi.cancel(currentRegistrationId.value!); alert('Ticket cancelled.'); fetchEvent(); }
-  catch (err: any) { alert('Failed to cancel: ' + err.response?.data?.message); }
+const handlePaymentSuccess = () => {
+  showCheckout.value = false;
+  registrationStatus.value = null;
+  toast.success('Payment confirmed! 🎉 Your ticket is booked.');
+  fetchEvent();
+  fetchWallet();
 };
 
-onMounted(() => { fetchEvent(); pollInterval = setInterval(() => fetchEvent(true), 30000); });
+const handlePaymentError = async (msg: string) => {
+  showCheckout.value = false;
+  // Notify backend: reset reg to payment_failed and refund wallet
+  if (orderData.value?.order_id) {
+    try {
+      await paymentApi.failOrder({ order_id: orderData.value.order_id });
+    } catch { /* best-effort */ }
+  }
+  registrationStatus.value = 'payment_failed';
+  toast.error(msg + ' Any wallet amount used has been refunded.');
+};
+
+const cancelRegistration = async () => {
+  showCancelConfirm.value = false;
+  try {
+    const res = await registrationApi.cancel(currentRegistrationId.value!);
+    const msg = res.data?.message || 'Ticket cancelled.';
+    registrationStatus.value = null;
+    currentRegistrationId.value = null;
+    toast.success(msg);
+    fetchEvent();
+    fetchWallet();
+  } catch (err: any) { toast.error('Failed to cancel: ' + (err.response?.data?.message ?? 'Unknown error')); }
+};
+
+const retryPayment = async () => {
+  bookingInProgress.value = true;
+  try {
+    initiateBooking();
+  } finally {
+    bookingInProgress.value = false;
+  }
+};
+
+const resetAndRegisterAgain = () => {
+  // Clear the failed registration status so the form re-appears
+  registrationStatus.value = null;
+  currentRegistrationId.value = null;
+};
+
+onMounted(() => { fetchEvent(); fetchWallet(); pollInterval = setInterval(() => fetchEvent(true), 30000); });
 onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); });
 </script>
 
@@ -470,7 +676,7 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); });
   background: rgba(0,243,255,0.08);
   border: 1px solid rgba(0,243,255,0.25);
   padding: 2rem; border-radius: 1.5rem;
-  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;
 }
 
 [data-theme="light"] .status-panel-corp {
@@ -491,6 +697,39 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); });
 }
 
 .btn-cancel-ticket:hover { background: #ff007f; color: #000; }
+
+/* ── Payment pending / failed status variants ── */
+.status-panel-corp--pending {
+  background: rgba(234,179,8,0.08);
+  border-color: rgba(234,179,8,0.3);
+}
+
+.status-panel-corp--failed {
+  background: rgba(255,0,127,0.06);
+  border-color: rgba(255,0,127,0.25);
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.status-text--pending { color: #eab308; font-size: 1.5rem; }
+
+.status-text--failed {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-top: 0.35rem;
+  letter-spacing: 0;
+  line-height: 1.5;
+}
+
+.btn-retry-payment {
+  padding: 0.65rem 1.25rem; border-radius: 10px; cursor: pointer;
+  border: 1px solid rgba(234,179,8,0.4);
+  color: #eab308; background: transparent;
+  font-weight: 800; font-size: 0.82rem; font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.btn-retry-payment:hover { background: #eab308; color: #000; }
 
 /* ── Registration form ── */
 .registration-form {
@@ -560,4 +799,152 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); });
   .detail-card { padding: 2rem; }
   .header-corp { flex-direction: column; }
 }
+
+/* ── Referral input row ── */
+.ref-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ref-input { flex: 1; min-width: 0; }
+
+.ref-status {
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ref-status--ok      { color: #22c55e; }
+.ref-status--err     { color: #f87171; }
+.ref-status--loading { color: var(--text-muted); }
+
+/* ── Wallet toggle ── */
+.wallet-section {
+  background: var(--bg-panel-light);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+[data-theme="light"] .wallet-section { background: #f1f5f9; border-color: #cbd5e1; }
+
+.wallet-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wallet-checkbox {
+  width: 16px; height: 16px;
+  accent-color: var(--brand-accent);
+  cursor: pointer;
+}
+
+.wallet-label { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
+.wallet-bal   { color: var(--brand-accent); font-size: 0.82rem; display: block; margin-top: 0.1rem; }
+[data-theme="light"] .wallet-bal { color: #0369a1; }
+
+/* ── Price summary ── */
+.price-summary {
+  background: var(--bg-panel-light);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+[data-theme="light"] .price-summary { background: #f8fafc; border-color: #cbd5e1; }
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.price-row--discount { color: #22c55e; }
+.price-row--wallet   { color: var(--brand-accent); }
+[data-theme="light"] .price-row--wallet { color: #0369a1; }
+
+.price-row--total {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 0.1rem;
+}
+
+.mb-4 { margin-bottom: 1rem; }
+
+/* ── Inline cancel confirmation ── */
+.cancel-confirm-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: rgba(255,0,127,0.06);
+  border: 1px solid rgba(255,0,127,0.3);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  max-width: 320px;
+  animation: fade-in-up 0.18s ease;
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.cancel-confirm-text {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.cancel-confirm-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.btn-confirm-cancel {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid rgba(255,0,127,0.5);
+  background: #ff007f;
+  color: #000;
+  font-weight: 800;
+  font-size: 0.8rem;
+  font-family: inherit;
+  transition: filter 0.15s ease;
+}
+.btn-confirm-cancel:hover { filter: brightness(1.1); }
+
+.btn-keep-ticket {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-dim);
+  font-weight: 700;
+  font-size: 0.8rem;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.btn-keep-ticket:hover { background: var(--border-subtle); color: var(--text-primary); }
+
+[data-theme="light"] .cancel-confirm-inline {
+  background: #fff0f5;
+  border-color: rgba(190,24,93,0.3);
+}
+
 </style>

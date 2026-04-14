@@ -36,14 +36,24 @@
             </p>
           </div>
         </div>
-        <button class="chat-close" @click="isOpen = false" aria-label="Close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
+        <div class="chat-header-actions">
+          <button class="chat-icon-btn" @click="clearChat" title="Clear conversation" aria-label="Clear chat">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/>
+            </svg>
+          </button>
+          <button class="chat-close" @click="isOpen = false" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Messages -->
@@ -70,6 +80,16 @@
             <span class="dot"></span>
           </div>
         </div>
+      </div>
+
+      <!-- Quick suggestions (shown only at start) -->
+      <div v-if="messages.length === 1" class="chat-suggestions">
+        <button
+          v-for="s in suggestions"
+          :key="s"
+          class="suggestion-chip"
+          @click="sendSuggestion(s)"
+        >{{ s }}</button>
       </div>
 
       <!-- Input -->
@@ -112,11 +132,21 @@ const loading   = ref(false);
 const inputMsg  = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
 
+// Unique session ID per browser tab so each tab has its own conversation history
+const sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
 type Message = { role: 'user' | 'bot'; content: string; escalated?: boolean };
 
 const messages = ref<Message[]>([
-  { role: 'bot', content: 'Hi! How can I help you today?' },
+  { role: 'bot', content: 'Hi! I\'m the LiveSports assistant. How can I help you today?' },
 ]);
+
+const suggestions = [
+  'How do I register for an event?',
+  'What payment methods are accepted?',
+  'Show me upcoming events',
+  'How do I cancel my registration?',
+];
 
 const scrollToBottom = async () => {
   await nextTick();
@@ -126,23 +156,46 @@ const scrollToBottom = async () => {
 
 const sendMessage = async () => {
   const txt = inputMsg.value.trim();
-  if (!txt) return;
+  if (!txt || loading.value) return;
   messages.value.push({ role: 'user', content: txt });
   inputMsg.value = '';
   loading.value  = true;
   await scrollToBottom();
+
   try {
-    const config = authStore.token
-      ? { headers: { Authorization: `Bearer ${authStore.token}` } }
-      : {};
-    const res = await axios.post('/api/chatbot', { message: txt }, config);
-    messages.value.push({ role: 'bot', content: res.data.response, escalated: res.data.escalated });
+    const headers: any = { 'Content-Type': 'application/json' };
+    if (authStore.token) headers.Authorization = `Bearer ${authStore.token}`;
+
+    const res = await axios.post(
+      '/api/chatbot',
+      { message: txt, session_id: sessionId },
+      { headers }
+    );
+    messages.value.push({
+      role: 'bot',
+      content: res.data.response,
+      escalated: res.data.escalated,
+    });
   } catch {
-    messages.value.push({ role: 'bot', content: 'Sorry, something went wrong. Please try again.' });
+    messages.value.push({
+      role: 'bot',
+      content: 'Sorry, something went wrong. Please try again.',
+    });
   } finally {
     loading.value = false;
     await scrollToBottom();
   }
+};
+
+const sendSuggestion = (text: string) => {
+  inputMsg.value = text;
+  sendMessage();
+};
+
+const clearChat = () => {
+  messages.value = [
+    { role: 'bot', content: 'Hi! I\'m the LiveSports assistant. How can I help you today?' },
+  ];
 };
 </script>
 
@@ -182,7 +235,7 @@ const sendMessage = async () => {
 /* ── Chat window ── */
 .chat-window {
   width: 340px;
-  height: 480px;
+  max-height: 520px;
   display: flex;
   flex-direction: column;
   background: var(--bg-panel-solid);
@@ -212,6 +265,12 @@ const sendMessage = async () => {
   display: flex;
   align-items: center;
   gap: 0.65rem;
+}
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .chat-avatar {
@@ -250,6 +309,7 @@ const sendMessage = async () => {
   flex-shrink: 0;
 }
 
+.chat-icon-btn,
 .chat-close {
   background: none;
   border: none;
@@ -262,6 +322,7 @@ const sendMessage = async () => {
   transition: background 0.15s ease, color 0.15s ease;
 }
 
+.chat-icon-btn:hover,
 .chat-close:hover {
   background: var(--bg-panel-light);
   color: var(--text-primary);
@@ -276,6 +337,7 @@ const sendMessage = async () => {
   flex-direction: column;
   gap: 0.75rem;
   scrollbar-width: none;
+  min-height: 0;
 }
 
 .chat-messages::-webkit-scrollbar { display: none; }
@@ -341,6 +403,47 @@ const sendMessage = async () => {
   font-weight: 600;
 }
 
+/* ── Quick suggestions ── */
+.chat-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0 1rem 0.75rem;
+  flex-shrink: 0;
+}
+
+.suggestion-chip {
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-panel-light);
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.suggestion-chip:hover {
+  background: var(--brand-accent);
+  border-color: var(--brand-accent);
+  color: #000;
+}
+
+[data-theme="light"] .suggestion-chip {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+[data-theme="light"] .suggestion-chip:hover {
+  background: var(--brand-accent);
+  border-color: var(--brand-accent);
+  color: #000;
+}
+
 /* ── Input row ── */
 .chat-input-row {
   display: flex;
@@ -365,10 +468,7 @@ const sendMessage = async () => {
 }
 
 .chat-input::placeholder { color: var(--text-muted); }
-
-.chat-input:focus {
-  border-color: var(--brand-accent);
-}
+.chat-input:focus { border-color: var(--brand-accent); }
 
 [data-theme="light"] .chat-input {
   background: #f8fafc;

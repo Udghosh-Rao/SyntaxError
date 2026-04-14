@@ -215,19 +215,61 @@ class GoogleOAuthComplete(Resource):
 class MyReferrals(Resource):
     @jwt_required()
     def get(self):
+        """
+        Returns referral stats for the current user.
+
+        Counts TWO types of referrals:
+          1. Account referrals  — users who signed up using this code
+             (stored in users.referred_by_id)
+          2. Event referrals    — registrations where this code was used
+             at checkout (stored in wallet_transactions type='referral_bonus')
+        Total shown is the union of both.
+        """
         user_id = int(get_jwt_identity())
         user    = User.query.get(user_id)
         if not user:
             return {'message': 'User not found'}, 404
+
+        # ── Account-level referrals (signed up via code) ──────────────────────
+        account_referrals = [
+            {
+                'id':        r.id,
+                'name':      r.name,
+                'type':      'account',
+                'joined_at': r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in user.referrals
+        ]
+
+        # ── Event-level referrals (used code at checkout) ─────────────────────
+        # Count wallet_transactions of type referral_bonus belonging to this user.
+        # These are created in payments/verify whenever someone uses this user's
+        # referral code at event checkout (distinct from account-signup referrals).
+        from app.models.wallet import Wallet, WalletTransaction
+        wallet = Wallet.query.filter_by(user_id=user_id).first()
+        event_bonus_txns = []
+        if wallet:
+            event_bonus_txns = WalletTransaction.query.filter_by(
+                wallet_id=wallet.id,
+                type='referral_bonus'
+            ).order_by(WalletTransaction.created_at.desc()).all()
+
+        event_referrals = [
+            {
+                'id':        f'evt_{txn.id}',
+                'name':      txn.description,
+                'type':      'event',
+                'joined_at': txn.created_at.isoformat() if txn.created_at else None,
+                'bonus':     txn.amount,
+            }
+            for txn in event_bonus_txns
+        ]
+
+        all_referrals   = account_referrals + event_referrals
+        total_referrals = len(all_referrals)
+
         return {
             'referral_code':   user.referral_code,
-            'total_referrals': len(user.referrals),
-            'referrals': [
-                {
-                    'id':        r.id,
-                    'name':      r.name,
-                    'joined_at': r.created_at.isoformat() if r.created_at else None,
-                }
-                for r in user.referrals
-            ],
+            'total_referrals': total_referrals,
+            'referrals':       all_referrals,
         }, 200
