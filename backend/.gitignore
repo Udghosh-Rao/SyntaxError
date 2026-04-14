@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+
+# Python bytecode/cache generated in this repo
+__pycache__\
+*.py[cod]
+.pytest_cache\
+
+# Local database file generated at runtime
+instance\
