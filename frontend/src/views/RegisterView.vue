@@ -257,7 +257,7 @@ const handleRegister = async () => {
     const sportsPayload = form.value.preferred_sports.flatMap((s) => {
       if (s === 'others') {
         return customTags.value.length
-          ? customTags.value.map((t) => `others:${t}`)
+          ? customTags.value.map((t) => t)
           : ['others'];
       }
       return [s];

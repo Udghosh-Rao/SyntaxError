@@ -29,8 +29,8 @@
           <input ref="fileInput" type="file" accept="image/*" class="hidden-input" @change="handleAvatarUpload" />
           <p class="avatar-hint">Click to upload. Max 2 MB. Square recommended.</p>
 
-          <!-- Referral Code -->
-          <div class="referral-box mt-8">
+          <!-- Referral Code (users only) -->
+          <div v-if="!authStore.isOrganizer" class="referral-box mt-8">
             <label class="field-label">YOUR REFERRAL CODE</label>
             <div class="referral-code-row">
               <span class="referral-code-text">{{ form.referral_code }}</span>

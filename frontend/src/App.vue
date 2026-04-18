@@ -95,75 +95,80 @@
                   </div>
                 </div>
 
-                <div class="dropdown-divider"></div>
+                <!-- Menu items — role-specific (hidden for admin) -->
+                <template v-if="!authStore.isAdmin">
+                  <div class="dropdown-divider"></div>
 
-                <!-- Menu items — role-specific -->
-                <nav class="dropdown-nav">
+                  <nav class="dropdown-nav">
 
-                  <!-- Home — role-aware shortcut -->
-                  <router-link
-                    :to="authStore.isAdmin ? '/admin' : authStore.isOrganizer ? '/organizer' : '/home'"
-                    class="dropdown-item" @click="menuOpen = false">
-                    <span class="item-icon">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-                      </svg>
-                    </span>
-                    Home
-                  </router-link>
+                    <!-- Home — role-aware shortcut -->
+                    <router-link
+                      :to="authStore.isOrganizer ? '/organizer' : '/home'"
+                      class="dropdown-item" @click="menuOpen = false">
+                      <span class="item-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                      </span>
+                      Home
+                    </router-link>
 
-                  <!-- Profile — all roles -->
-                  <router-link to="/profile" class="dropdown-item" @click="menuOpen = false">
-                    <span class="item-icon">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                      </svg>
-                    </span>
-                    Profile
-                  </router-link>
+                    <!-- Profile -->
+                    <router-link to="/profile" class="dropdown-item" @click="menuOpen = false">
+                      <span class="item-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                        </svg>
+                      </span>
+                      Profile
+                    </router-link>
 
-                  <!-- Wallet — user + admin only -->
-                  <router-link v-if="authStore.isUser || authStore.isAdmin" to="/wallet" class="dropdown-item wallet-item" @click="menuOpen = false; fetchWalletBalance()">
-                    <span class="item-icon item-icon--wallet">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
-                      </svg>
-                    </span>
-                    Wallet
-                    <span v-if="walletBalance !== null" class="wallet-badge">
-                      <span class="wallet-coin">🪙</span>
-                      <span class="wallet-amount">{{ walletBalance.toFixed(0) }}</span>
-                    </span>
-                  </router-link>
+                    <!-- Wallet — user only -->
+                    <router-link v-if="authStore.isUser" to="/wallet" class="dropdown-item wallet-item" @click="menuOpen = false; fetchWalletBalance()">
+                      <span class="item-icon item-icon--wallet">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+                        </svg>
+                      </span>
+                      Wallet
+                      <span v-if="walletBalance !== null" class="wallet-badge">
+                        <span class="wallet-coin">🪙</span>
+                        <span class="wallet-amount">{{ walletBalance.toFixed(0) }}</span>
+                      </span>
+                    </router-link>
 
-                  <!-- Events — all roles -->
-                  <router-link :to="authStore.isUser ? '/events' : authStore.isOrganizer ? '/organizer/events' : '/admin'"
-                    class="dropdown-item" @click="menuOpen = false">
-                    <span class="item-icon">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                      </svg>
-                    </span>
-                    Events
-                  </router-link>
+                    <!-- Events — non-admin roles -->
+                    <router-link :to="authStore.isUser ? '/events' : '/organizer/events'"
+                      class="dropdown-item" @click="menuOpen = false">
+                      <span class="item-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                      </span>
+                      Events
+                    </router-link>
 
-                  <!-- Dashboard — all roles, label changes -->
-                  <router-link
-                    :to="authStore.isAdmin ? '/admin' : authStore.isOrganizer ? '/organizer/analytics' : '/dashboard'"
-                    class="dropdown-item" @click="menuOpen = false">
-                    <span class="item-icon">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-                      </svg>
-                    </span>
-                    Dashboard
-                  </router-link>
+                    <!-- Dashboard — non-admin roles -->
+                    <router-link
+                      :to="authStore.isOrganizer ? '/organizer/analytics' : '/dashboard'"
+                      class="dropdown-item" @click="menuOpen = false">
+                      <span class="item-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                      </span>
+                      Dashboard
+                    </router-link>
 
-                </nav>
+                  </nav>
 
-                <div class="dropdown-divider"></div>
+                  <div class="dropdown-divider"></div>
+                </template>
 
-                <!-- Logout -->
+                <!-- Admin gets just a divider before Logout -->
+                <div v-if="authStore.isAdmin" class="dropdown-divider"></div>
+
+                                <!-- Logout -->
                 <button class="dropdown-logout" @click="handleLogout">
                   <span class="item-icon">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

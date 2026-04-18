@@ -11,7 +11,7 @@ class Wallet(db.Model):
     updated_at = db.Column(db.DateTime, server_default=db.func.now(),
                            onupdate=db.func.now())
 
-    user = db.relationship('User', backref=db.backref('wallet', uselist=False, passive_deletes=True))
+    user = db.relationship('User', backref=db.backref('wallet', uselist=False))
 
     def to_dict(self):
         return {

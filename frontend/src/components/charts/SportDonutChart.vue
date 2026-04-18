@@ -19,7 +19,7 @@ const isLight = () => document.documentElement.getAttribute('data-theme') === 'l
 
 const colors = () => ({
   legend:      isLight() ? 'rgba(15,23,42,0.9)'  : 'rgba(255,255,255,0.8)',
-  legendWeight:'bold' as const,
+  legendWeight:'700' as const,
   title:       isLight() ? 'rgba(15,23,42,0.8)'  : 'rgba(255,255,255,0.6)',
   segBorder:   isLight() ? '#f1f5f9'              : 'rgba(0,0,0,0.35)',
   segBorderW:  isLight() ? 3                      : 1,
@@ -59,7 +59,7 @@ const renderChart = () => {
           display: true,
           text: 'Sport Category Distribution',
           color: c.title,
-          font: { size: 12, weight: 'bold' },
+          font: { size: 12, weight: '700' },
         },
       },
     },

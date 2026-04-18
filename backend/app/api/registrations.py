@@ -47,7 +47,7 @@ class RegistrationCreate(Resource):
             return {'message': 'Event is sold out'}, 400
 
         existing = Registration.query.filter_by(user_id=user_id, event_id=event_id).first()
-        if existing:
+        if existing and existing.status != 'cancelled':
             return {'message': 'Already registered'}, 400
 
         role         = data.get('role', 'athlete')
@@ -80,24 +80,38 @@ class RegistrationCreate(Resource):
             wallet_used = round(wallet_used, 2)
             final_price = round(price_after_discount - wallet_used, 2)
 
-        # ── Create registration ───────────────────────────────────────────────
+        # ── Create or reuse registration ─────────────────────────────────────
+        # If a cancelled row exists, update it in place — a DB-level UNIQUE
+        # constraint on (user_id, event_id) prevents a new INSERT.
         status = 'confirmed' if final_price == 0 else 'pending'
-        reg = Registration(
-            user_id      = user_id,
-            event_id     = event_id,
-            status       = status,
-            role         = role,
-            role_details = {
+        if existing and existing.status == 'cancelled':
+            reg = existing
+            reg.status       = status
+            reg.role         = role
+            reg.role_details = {
                 **role_details,
-                'referral_code':    referral_code or None,
-                'discount_amount':  discount_amount,
-                'wallet_used':      wallet_used,
-                'final_price':      final_price,
+                'referral_code':   referral_code or None,
+                'discount_amount': discount_amount,
+                'wallet_used':     wallet_used,
+                'final_price':     final_price,
             }
-        )
+        else:
+            reg = Registration(
+                user_id      = user_id,
+                event_id     = event_id,
+                status       = status,
+                role         = role,
+                role_details = {
+                    **role_details,
+                    'referral_code':   referral_code or None,
+                    'discount_amount': discount_amount,
+                    'wallet_used':     wallet_used,
+                    'final_price':     final_price,
+                }
+            )
+            db.session.add(reg)
 
         try:
-            db.session.add(reg)
             db.session.flush()      # get reg.id before committing
 
             # Deduct wallet if applicable
@@ -129,7 +143,6 @@ class RegistrationCreate(Resource):
                 'registration_id': reg.id,
                 'final_price':     final_price,
                 'discount_amount': discount_amount,
-                'discount_applied': discount_amount > 0,
                 'wallet_used':     wallet_used,
                 'status':          status,
             }, 201

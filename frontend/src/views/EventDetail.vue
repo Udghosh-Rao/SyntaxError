@@ -334,6 +334,7 @@ const submitRegistrationForm = async () => {
     if (finalPrice.value === 0) {
       toast.success('Registration successful! You\'re in.');
       bookingInProgress.value = false;
+      await checkRegistrationStatus();
       fetchEvent();
       fetchWallet();
       return;
@@ -345,8 +346,13 @@ const submitRegistrationForm = async () => {
       if (finalPrice.value > 0) {
         initiateBooking();
       } else {
+        // Wallet covered the full amount but backend says already registered —
+        // refresh status so the UI switches from the form to the confirmed view
         toast.info('You are already registered for this event.');
         bookingInProgress.value = false;
+        await checkRegistrationStatus();
+        fetchEvent();
+        fetchWallet();
       }
     } else {
       toast.error(err.response?.data?.message || 'Failed to submit registration.');

@@ -201,47 +201,100 @@ const handleLogin = async () => {
 const handleGoogleLogin = () => {
   googleLoading.value = true;
   error.value = '';
-  if (!(window as any).google?.accounts?.id) {
-    error.value = 'Google Sign-In failed to load. Please refresh.';
-    googleLoading.value = false;
-    return;
-  }
+
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
   if (!clientId) {
     error.value = 'Google OAuth is not configured (VITE_GOOGLE_CLIENT_ID missing).';
     googleLoading.value = false;
     return;
   }
+
+  if (!(window as any).google?.accounts) {
+    error.value = 'Google Sign-In failed to load. Please refresh.';
+    googleLoading.value = false;
+    return;
+  }
+
+  // Shared callback — receives the JWT id_token (credential) from Google
+  const handleCredential = async (credentialResponse: { credential?: string }) => {
+    if (!credentialResponse.credential) {
+      error.value = 'Google Sign-In was cancelled or failed.';
+      googleLoading.value = false;
+      return;
+    }
+    try {
+      // Send id_token to backend — matches backend's `data.get('id_token')` check
+      const res = await axios.post('/api/auth/oauth/google', {
+        id_token: credentialResponse.credential,
+      });
+      if (res.data.is_new_user) {
+        onboardingName.value  = res.data.name;
+        onboardingToken.value = res.data.temp_token;
+        onboardingId.value    = res.data.user_id;
+        showOnboarding.value  = true;
+      } else {
+        authStore.token  = res.data.access_token;
+        authStore.role   = res.data.role;
+        authStore.userId = res.data.user_id;
+        localStorage.setItem('auth_token', res.data.access_token);
+        localStorage.setItem('user_role',  res.data.role);
+        localStorage.setItem('user_id',    String(res.data.user_id));
+        await authStore.fetchProfile();
+        redirectAfterLogin();
+      }
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Google Sign-In failed.';
+    } finally {
+      googleLoading.value = false;
+    }
+  };
+
+  // Initialize with ux_mode: 'popup' — this is what produces the exact two-screen
+  // "Choose an account" → "Sign in to LifeSports.com" popup shown in the screenshots
   (window as any).google.accounts.id.initialize({
     client_id: clientId,
-    callback: async (response: { credential: string }) => {
-      try {
-        const res = await axios.post('/api/auth/oauth/google', { id_token: response.credential });
-        if (res.data.is_new_user) {
-          // New user — show onboarding overlay
-          onboardingName.value  = res.data.name;
-          onboardingToken.value = res.data.temp_token;
-          onboardingId.value    = res.data.user_id;
-          showOnboarding.value  = true;
-        } else {
-          // Existing user — sign in immediately
-          authStore.token  = res.data.access_token;
-          authStore.role   = res.data.role;
-          authStore.userId = res.data.user_id;
-          localStorage.setItem('auth_token', res.data.access_token);
-          localStorage.setItem('user_role',  res.data.role);
-          localStorage.setItem('user_id',    String(res.data.user_id));
-          await authStore.fetchProfile();
-          redirectAfterLogin();
-        }
-      } catch (err: any) {
-        error.value = err.response?.data?.message || 'Google Sign-In failed.';
-      } finally {
-        googleLoading.value = false;
-      }
-    },
+    callback: handleCredential,
+    ux_mode: 'popup',
+    cancel_on_tap_outside: false,
   });
-  (window as any).google.accounts.id.prompt();
+
+  // Render a hidden GSI button then click it — this is the only way to open
+  // the full popup account picker from a user-initiated click (popup blockers
+  // require a direct user gesture on the Google-rendered iframe button)
+  let host = document.getElementById('__gsi_btn_host__') as HTMLElement;
+  if (!host) {
+    host = document.createElement('div');
+    host.id = '__gsi_btn_host__';
+    host.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:200px;height:40px;overflow:visible;';
+    document.body.appendChild(host);
+  }
+
+  // Re-render each time to ensure the button is fresh
+  host.innerHTML = '';
+  (window as any).google.accounts.id.renderButton(host, {
+    type: 'standard',
+    size: 'large',
+    theme: 'outline',
+    text: 'signin_with',
+    shape: 'rectangular',
+  });
+
+  // Small delay to let the GSI iframe render before clicking
+  setTimeout(() => {
+    const gBtn = host.querySelector('div[role="button"]') as HTMLElement
+      || host.querySelector('iframe') as HTMLElement;
+    if (gBtn) {
+      gBtn.click();
+    } else {
+      // Last resort: prompt() — shows One Tap sidebar if popup blocked
+      (window as any).google.accounts.id.prompt((n: any) => {
+        if (n.isNotDisplayed() || n.isSkippedMoment()) {
+          error.value = 'Google Sign-In popup was blocked. Please allow popups for this site.';
+          googleLoading.value = false;
+        }
+      });
+    }
+  }, 300);
 };
 
 const redirectAfterLogin = () => {

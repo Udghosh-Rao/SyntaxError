@@ -15,8 +15,6 @@ class Register(Resource):
         data = request.get_json()
         if User.query.filter_by(email=data.get('email')).first():
             return {'message': 'Email already exists'}, 400
-        if not data.get('password'):
-            return {'message': 'Password required'}, 400
         role = data.get('role', 'user')
         if role == 'admin':
             return {'message': 'Admin cannot be registered publicly'}, 403
@@ -84,9 +82,8 @@ class Me(Resource):
     def put(self):
         user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
-        if not user:
-            return {'message': 'User not found'}, 404
         data = request.get_json()
+        user.name = data.get('name', user.name)
         user.city = data.get('city', user.city)
         user.budget_preference = data.get('budget_preference', user.budget_preference)
         user.preferred_sports = data.get('preferred_sports', user.preferred_sports)
