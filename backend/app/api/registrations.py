@@ -129,6 +129,7 @@ class RegistrationCreate(Resource):
                 'registration_id': reg.id,
                 'final_price':     final_price,
                 'discount_amount': discount_amount,
+                'discount_applied': discount_amount > 0,
                 'wallet_used':     wallet_used,
                 'status':          status,
             }, 201
