@@ -146,6 +146,10 @@ const handleAddFunds = async () => {
         showTopup.value   = false;
         topupAmount.value = null;
         await fetchWallet();
+        // Notify the navbar to refresh its wallet badge immediately
+        window.dispatchEvent(new CustomEvent('wallet-updated', {
+          detail: { balance: wallet.value?.balance ?? 0 }
+        }));
       },
       modal: { ondismiss: () => { topupLoading.value = false; } },
     });

@@ -16,8 +16,8 @@ class OrganizerDashboard(Resource):
     def get(self):
         """Get event list with KPIs (Spec 6.6 / Feature 8 & 9)"""
         uid = int(get_jwt_identity())
-        events = Event.query.filter_by(organizer_id=uid, is_active=True).all()
-        
+        events = Event.query.filter_by(organizer_id=uid).all()
+
         return [{
             'event_id': e.id,
             'title': e.title,
@@ -29,7 +29,8 @@ class OrganizerDashboard(Resource):
             'revenue': e.revenue,
             'fill_rate': e.fill_rate,
             'performance_label': e.performance_label,
-            'is_featured': e.is_featured
+            'is_featured': e.is_featured,
+            'is_active': e.is_active,
         } for e in events], 200
 
 @organizer_ns.route('/trend/<int:event_id>')
@@ -60,7 +61,7 @@ class TicketSummary(Resource):
     def get(self):
         """Get ticket sales summary across events (Spec 6.6 / Feature 11)"""
         uid = int(get_jwt_identity())
-        events = Event.query.filter_by(organizer_id=uid, is_active=True).all()
+        events = Event.query.filter_by(organizer_id=uid).all()
         
         return [{
             'title': e.title,

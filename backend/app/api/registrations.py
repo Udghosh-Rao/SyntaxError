@@ -114,8 +114,10 @@ class RegistrationCreate(Resource):
         try:
             db.session.flush()      # get reg.id before committing
 
-            # Deduct wallet if applicable
-            if wallet_used > 0:
+            # Only deduct wallet here for fully-free registrations (final_price == 0).
+            # For paid events (final_price > 0), Razorpay is involved and wallet
+            # deduction happens atomically in /payments/verify after confirmation.
+            if wallet_used > 0 and final_price == 0:
                 wallet = get_or_create_wallet(user_id)
                 wallet.balance -= wallet_used
                 db.session.add(WalletTransaction(
@@ -125,8 +127,11 @@ class RegistrationCreate(Resource):
                     description = f'Registration payment for "{event.title}" (₹{wallet_used} from wallet)',
                 ))
 
-            # Credit referrer's wallet
-            if referrer and discount_amount > 0:
+            # Credit referrer's wallet ONLY when registration is fully confirmed
+            # (wallet covers 100% of the cost). For paid events going through Razorpay,
+            # the referrer bonus is credited inside /payments/verify after payment succeeds.
+            # This prevents awarding a bonus for a registration that never gets paid.
+            if referrer and discount_amount > 0 and final_price == 0:
                 ref_wallet = get_or_create_wallet(referrer.id)
                 bonus = round(base_price * REFERRAL_BONUS, 2)
                 ref_wallet.balance += bonus
@@ -210,37 +215,51 @@ class RegistrationCancel(Resource):
         if reg.status == 'cancelled':
             return {'message': 'Already cancelled'}, 400
 
-        details      = reg.role_details or {}
-        wallet_used  = float(details.get('wallet_used', 0))
+        # Acquire a row-level lock so concurrent duplicate requests can't both
+        # pass the status check and issue a double refund
+        db.session.refresh(reg)
+        if reg.status == 'cancelled':
+            return {'message': 'Already cancelled'}, 400
+
+        details       = reg.role_details or {}
+        wallet_used   = float(details.get('wallet_used', 0))
+        razorpay_paid = float(details.get('final_price', 0))
+        discount_amount = float(details.get('discount_amount', 0))
         refund_amount = 0.0
 
-        # ── Refund wallet amount that was used at checkout ────────────────────
-        if wallet_used > 0:
-            user_wallet = get_or_create_wallet(user_id)
-            user_wallet.balance += wallet_used
-            refund_amount = wallet_used
-            db.session.add(WalletTransaction(
-                wallet_id   = user_wallet.id,
-                amount      = wallet_used,
-                type        = 'credit',
-                description = f'Refund: cancelled registration for "{reg.event.title}" (reg #{reg.id})',
-            ))
+        # ── Refund only if registration was confirmed (i.e. payment completed) ─
+        # pending = Razorpay not completed yet, wallet was not deducted yet
+        # confirmed = fully paid, refund wallet_used + razorpay_paid (excludes discount)
+        if reg.status == 'confirmed':
+            total_refund = round(wallet_used + razorpay_paid, 2)
+            if total_refund > 0:
+                user_wallet = get_or_create_wallet(user_id)
+                user_wallet.balance += total_refund
+                refund_amount = total_refund
+                db.session.add(WalletTransaction(
+                    wallet_id   = user_wallet.id,
+                    amount      = total_refund,
+                    type        = 'credit',
+                    description = f'Refund: cancelled registration for "{reg.event.title}" (reg #{reg.id})',
+                ))
 
-        # ── Claw back referrer bonus if a referral code was used ──────────────
+        # ── Claw back referrer bonus (only if it was ever credited) ──────────
+        # Bonus is only credited for confirmed registrations, so only claw back
+        # if the registration was confirmed. For pending cancellations the bonus
+        # was never given (fixed in registration creation flow).
         referral_code = (details.get('referral_code') or '').strip().upper()
         if referral_code and reg.status == 'confirmed':
             referrer = User.query.filter_by(referral_code=referral_code).first()
             if referrer and referrer.id != user_id:
                 bonus = round(reg.event.price * REFERRAL_BONUS, 2)
                 ref_wallet = get_or_create_wallet(referrer.id)
-                # Only claw back up to what's available (never go negative)
                 clawback = min(bonus, ref_wallet.balance)
                 if clawback > 0:
                     ref_wallet.balance -= clawback
                     db.session.add(WalletTransaction(
                         wallet_id   = ref_wallet.id,
                         amount      = -clawback,
-                        type        = 'debit',
+                        type        = 'referral_bonus',
                         description = f'Referral bonus reversed: registration for "{reg.event.title}" was cancelled (reg #{reg.id})',
                     ))
 
@@ -251,8 +270,24 @@ class RegistrationCancel(Resource):
             db.session.rollback()
             return {'message': str(e)}, 500
 
+        # Build a clear breakdown message
+        if refund_amount > 0:
+            parts = []
+            if razorpay_paid > 0:
+                parts.append(f'₹{razorpay_paid:.2f} (Razorpay charge)')
+            if wallet_used > 0:
+                parts.append(f'₹{wallet_used:.2f} (wallet)')
+            breakdown = ' + '.join(parts)
+            if discount_amount > 0:
+                msg = (f'Registration cancelled. ₹{refund_amount:.2f} refunded to your wallet '
+                       f'({breakdown}). ₹{discount_amount:.2f} referral discount is non-refundable.')
+            else:
+                msg = f'Registration cancelled. ₹{refund_amount:.2f} refunded to your wallet ({breakdown}).'
+        else:
+            msg = 'Registration cancelled.'
+
         return {
-            'message':        'Registration cancelled' + (f'. ₹{refund_amount:.2f} refunded to your wallet.' if refund_amount > 0 else '.'),
+            'message':        msg,
             'refund_amount':  refund_amount,
             'registration':   reg.to_dict(),
         }, 200

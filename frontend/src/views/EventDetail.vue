@@ -79,10 +79,12 @@
                 <!-- Inline cancel confirmation -->
                 <div v-if="showCancelConfirm" class="cancel-confirm-inline">
                   <p class="cancel-confirm-text">
-                    ⚠️ Cancel this ticket? Any wallet amount used will be refunded.
+                    ⚠️ Cancel this ticket? The amount you paid (via wallet and/or Razorpay) will be refunded to your wallet. Referral discounts are non-refundable.
                   </p>
                   <div class="cancel-confirm-actions">
-                    <button @click="cancelRegistration" class="btn-confirm-cancel">Yes, Cancel</button>
+                    <button @click="cancelRegistration" :disabled="cancelling" class="btn-confirm-cancel">
+                      {{ cancelling ? 'Cancelling…' : 'Yes, Cancel' }}
+                    </button>
                     <button @click="showCancelConfirm = false" class="btn-keep-ticket">Keep Ticket</button>
                   </div>
                 </div>
@@ -211,6 +213,7 @@
       :order-data="orderData"
       :event-id="String(event.id)"
       @close="showCheckout = false"
+      @cancel="handlePaymentCancel"
       @success="handlePaymentSuccess"
       @error="handlePaymentError"
     />
@@ -242,6 +245,7 @@ const bookingInProgress = ref(false);
 const showCheckout = ref(false);
 const orderData = ref<any>(null);
 const showCancelConfirm = ref(false);
+const cancelling        = ref(false);
 
 const fetchEvent = async (isPolling = false) => {
   try {
@@ -336,7 +340,12 @@ const submitRegistrationForm = async () => {
       bookingInProgress.value = false;
       await checkRegistrationStatus();
       fetchEvent();
-      fetchWallet();
+      // Immediately deduct wallet from UI and notify navbar
+      if (walletDeduction.value > 0) {
+        walletBalance.value = parseFloat((walletBalance.value - walletDeduction.value).toFixed(2));
+        window.dispatchEvent(new CustomEvent('wallet-updated', { detail: { balance: walletBalance.value } }));
+      }
+      await fetchWallet();
       return;
     }
     initiateBooking();
@@ -352,7 +361,11 @@ const submitRegistrationForm = async () => {
         bookingInProgress.value = false;
         await checkRegistrationStatus();
         fetchEvent();
-        fetchWallet();
+        if (walletDeduction.value > 0) {
+          walletBalance.value = parseFloat((walletBalance.value - walletDeduction.value).toFixed(2));
+          window.dispatchEvent(new CustomEvent('wallet-updated', { detail: { balance: walletBalance.value } }));
+        }
+        await fetchWallet();
       }
     } else {
       toast.error(err.response?.data?.message || 'Failed to submit registration.');
@@ -381,7 +394,26 @@ const handlePaymentSuccess = () => {
   registrationStatus.value = null;
   toast.success('Payment confirmed! 🎉 Your ticket is booked.');
   fetchEvent();
-  fetchWallet();
+  // Immediately deduct wallet portion from UI and notify navbar
+  if (walletDeduction.value > 0) {
+    walletBalance.value = parseFloat((walletBalance.value - walletDeduction.value).toFixed(2));
+    window.dispatchEvent(new CustomEvent('wallet-updated', { detail: { balance: walletBalance.value } }));
+  }
+  // Then do a real fetch in background to sync accurate balance from server
+  fetchWallet().then(() => {
+    window.dispatchEvent(new CustomEvent('wallet-updated', {
+      detail: { balance: walletBalance.value }
+    }));
+  });
+};
+
+const handlePaymentCancel = () => {
+  // User closed the modal before paying — no payment was attempted,
+  // wallet was never deducted, registration stays 'pending' in DB.
+  // Just close the modal and return to the booking form as-is.
+  showCheckout.value = false;
+  bookingInProgress.value = false;
+  // Do NOT set registrationStatus to 'payment_failed' and do NOT call failOrder
 };
 
 const handlePaymentError = async (msg: string) => {
@@ -397,25 +429,34 @@ const handlePaymentError = async (msg: string) => {
 };
 
 const cancelRegistration = async () => {
+  if (cancelling.value) return;          // block any second call
+  cancelling.value = true;
   showCancelConfirm.value = false;
   try {
     const res = await registrationApi.cancel(currentRegistrationId.value!);
+    const refundAmount = res.data?.refund_amount ?? 0;
     const msg = res.data?.message || 'Ticket cancelled.';
     registrationStatus.value = null;
     currentRegistrationId.value = null;
+    // Immediately update wallet balance in UI without waiting for a full refetch
+    if (refundAmount > 0) {
+      walletBalance.value = parseFloat((walletBalance.value + refundAmount).toFixed(2));
+      // Notify App.vue navbar to update its wallet balance ref instantly
+      window.dispatchEvent(new CustomEvent('wallet-updated', { detail: { balance: walletBalance.value } }));
+    }
     toast.success(msg);
     fetchEvent();
-    fetchWallet();
+    // Also do a real fetch in the background to ensure accuracy
+    await fetchWallet();
   } catch (err: any) { toast.error('Failed to cancel: ' + (err.response?.data?.message ?? 'Unknown error')); }
+  finally { cancelling.value = false; }
 };
 
-const retryPayment = async () => {
-  bookingInProgress.value = true;
-  try {
-    initiateBooking();
-  } finally {
-    bookingInProgress.value = false;
-  }
+const retryPayment = () => {
+  // Reset to null so the booking form re-appears with all fields intact.
+  // The user can re-check wallet/referral options before submitting again.
+  registrationStatus.value = null;
+  currentRegistrationId.value = null;
 };
 
 const resetAndRegisterAgain = () => {
@@ -834,7 +875,7 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); });
   padding: 0.75rem 1rem;
 }
 
-[data-theme="light"] .wallet-section { background: #f1f5f9; border-color: #cbd5e1; }
+[data-theme="light"] .wallet-section { background: #faeedd; border-color: #cbd5e1; }
 
 .wallet-toggle {
   display: flex;
@@ -866,7 +907,7 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); });
   gap: 0.45rem;
 }
 
-[data-theme="light"] .price-summary { background: #f8fafc; border-color: #cbd5e1; }
+[data-theme="light"] .price-summary { background: #fdf5e6; border-color: #cbd5e1; }
 
 .price-row {
   display: flex;

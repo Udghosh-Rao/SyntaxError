@@ -523,6 +523,18 @@ const redirectAfterLogin = () => {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+[data-theme="light"] .field-input {
+  background: #ffffff !important;
+  border: 1.5px solid #64748b !important;
+  color: #0f172a;
+}
+
+[data-theme="light"] .field-input::placeholder { color: #94a3b8; }
+[data-theme="light"] .field-input:focus {
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+}
+
 .field-input::placeholder { color: var(--text-muted); }
 
 .field-input:focus {
@@ -578,6 +590,11 @@ const redirectAfterLogin = () => {
   justify-content: center;
   transition: background 0.15s ease, border-color 0.15s ease;
   flex-shrink: 0;
+}
+
+[data-theme="light"] .custom-checkbox {
+  background: #ffffff !important;
+  border: 1.5px solid #64748b !important;
 }
 
 .custom-checkbox--checked {
@@ -684,10 +701,21 @@ const redirectAfterLogin = () => {
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
+[data-theme="light"] .btn-google {
+  background: #e2e8f0;
+  border: 1px solid #94a3b8;
+  color: #0f172a;
+}
+
 .btn-google:hover:not(:disabled) {
   background: var(--bg-panel);
   border-color: var(--border-premium);
   transform: translateY(-1px);
+}
+
+[data-theme="light"] .btn-google:hover:not(:disabled) {
+  background: #cbd5e1;
+  border-color: #64748b;
 }
 
 .btn-google:disabled { opacity: 0.5; cursor: not-allowed; }

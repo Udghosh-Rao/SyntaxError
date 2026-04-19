@@ -51,11 +51,11 @@
    LIGHT THEME
 ══════════════════════════════════════════ */
 [data-theme="light"] {
-  --bg-site: #f1f5f9;
-  --bg-panel: rgba(255, 255, 255, 0.95);
-  --bg-panel-solid: #ffffff;
-  --bg-panel-light: #f8fafc;
-  --bg-secondary: #f1f5f9;
+  --bg-site: #faeedd;
+  --bg-panel: rgba(255, 248, 235, 0.97);
+  --bg-panel-solid: #fdf5e6;
+  --bg-panel-light: #faeedd;
+  --bg-secondary: #faeedd;
 
   --brand-primary: #7c3aed;
   --brand-secondary: #db2777;

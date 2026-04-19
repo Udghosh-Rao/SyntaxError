@@ -150,21 +150,12 @@ class VerifyPayment(Resource):
             reg = payment.registration
             reg.status = 'payment_failed'
 
-            # Refund any wallet amount that was earmarked for this order
+            # Wallet is only deducted after successful verify — since we're
+            # in the failure branch, nothing was deducted yet, so no refund needed.
+            # Clear wallet_used so a retry re-evaluates balance fresh.
             details = reg.role_details or {}
-            wallet_used = float(details.get('wallet_used', 0))
-            if wallet_used > 0:
-                user_wallet = _get_or_create_wallet(reg.user_id)
-                user_wallet.balance += wallet_used
-                db.session.add(WalletTransaction(
-                    wallet_id   = user_wallet.id,
-                    amount      = wallet_used,
-                    type        = 'credit',
-                    description = f'Refund: payment failed for event registration (reg #{reg.id})',
-                ))
-                # Clear wallet_used so a retry doesn't double-refund
-                details['wallet_used'] = 0
-                reg.role_details = details
+            details['wallet_used'] = 0
+            reg.role_details = details
 
             db.session.commit()
             return {'message': 'Invalid payment signature'}, 400
@@ -238,19 +229,13 @@ class FailPayment(Resource):
         payment.status = 'failed'
         reg.status     = 'payment_failed'
 
-        details     = reg.role_details or {}
-        wallet_used = float(details.get('wallet_used', 0))
-        if wallet_used > 0:
-            user_wallet = _get_or_create_wallet(user_id)
-            user_wallet.balance += wallet_used
-            db.session.add(WalletTransaction(
-                wallet_id   = user_wallet.id,
-                amount      = wallet_used,
-                type        = 'credit',
-                description = f'Refund: payment abandoned for event registration (reg #{reg.id})',
-            ))
-            details['wallet_used'] = 0
-            reg.role_details = details
+        # ACID note: wallet is only deducted inside /verify (after Razorpay confirms).
+        # At this point (payment abandoned/failed before verify), the wallet balance
+        # was never touched, so there is nothing to refund here.
+        # Clear wallet_used metadata so a retry starts fresh.
+        details = reg.role_details or {}
+        details['wallet_used'] = 0
+        reg.role_details = details
 
         db.session.commit()
-        return {'message': 'Registration reset. Any wallet amount has been refunded.'}, 200
+        return {'message': 'Payment cancelled. Your registration is pending — you can retry.'}, 200

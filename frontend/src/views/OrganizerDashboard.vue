@@ -95,8 +95,11 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="event in events" :key="event.event_id" class="table-row">
-                  <td class="td-name">{{ event.title }}</td>
+                <tr v-for="event in events" :key="event.event_id" class="table-row" :class="{ 'table-row--inactive': !event.is_active }">
+                  <td class="td-name">
+                    {{ event.title }}
+                    <span v-if="!event.is_active" class="cancelled-badge">Cancelled</span>
+                  </td>
                   <td class="td-dim">{{ new Date(event.event_date).toLocaleDateString('en-GB') }}</td>
                   <td class="td-dim">{{ event.venue_city }}</td>
                   <td class="td-dim">{{ event.registrations }}</td>
@@ -117,7 +120,13 @@
                     </button>
                   </td>
                   <td class="td-actions">
-                    <button @click="router.push('/organizer/edit/' + event.event_id)" class="action-btn action-btn--edit">Edit</button>
+                    <button
+                      @click="event.is_active && router.push('/organizer/edit/' + event.event_id)"
+                      class="action-btn action-btn--edit"
+                      :class="{ 'action-btn--disabled': !event.is_active }"
+                      :disabled="!event.is_active"
+                      :title="event.is_active ? 'Edit event' : 'Event has been cancelled'"
+                    >Edit</button>
                   </td>
                 </tr>
                   <tr v-if="events.length === 0">
@@ -471,7 +480,7 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); });
 
 [data-theme="light"] .founder-section {
   border: 2px solid #94a3b8;
-  background: #f8fafc;
+  background: #fdf5e6;
 }
 
 .promo-section { border-color: rgba(255,0,127,0.25); }
@@ -496,7 +505,7 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); });
 }
 
 [data-theme="light"] .promo-card {
-  background: #f1f5f9;
+  background: #faeedd;
   border: 1.5px solid #94a3b8;
 }
 
@@ -627,8 +636,33 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); });
   color: #00b8cc;
   border-color: rgba(0, 184, 204, 0.3);
 }
+.action-btn--edit:hover:not(:disabled) { background: rgba(0, 184, 204, 0.2); }
 
-.action-btn--edit:hover { background: rgba(0, 184, 204, 0.2); }
+.action-btn--disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  pointer-events: none;
+  color: var(--text-muted) !important;
+  border-color: var(--border-subtle) !important;
+  background: transparent !important;
+}
+
+.table-row--inactive td { opacity: 0.55; }
+
+.cancelled-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  vertical-align: middle;
+}
 
 .action-btn--delete {
   background: rgba(239, 68, 68, 0.1);

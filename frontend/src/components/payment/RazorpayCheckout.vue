@@ -12,7 +12,7 @@
           </span>
           <h3 class="modal-title">Complete Registration</h3>
         </div>
-        <button class="close-btn" @click="$emit('close')" aria-label="Close">
+        <button class="close-btn" @click="emit('cancel')" aria-label="Close">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
@@ -91,7 +91,7 @@ const props = defineProps<{
   eventId: string;
 }>();
 
-const emit = defineEmits(['close', 'success', 'error']);
+const emit = defineEmits(['close', 'success', 'error', 'cancel']);
 const authStore = useAuthStore();
 const processing = ref(false);
 const razorpayLoaded = ref(false);
@@ -105,8 +105,8 @@ const basePriceDisplay = computed(() => {
 });
 
 const handleBackdropClick = () => {
-  // Backdrop click counts as dismissal — emit error so wallet refund fires
-  emit('error', 'Payment was not completed. Please try again.');
+  // Backdrop/close = user cancelled before paying — no wallet was touched
+  emit('cancel');
 };
 
 const loadRazorpayScript = (): Promise<void> => {
@@ -129,8 +129,11 @@ onMounted(async () => {
   }
 });
 
+const razorpayOpened = ref(false);
+
 const openRazorpay = () => {
   errorMsg.value = '';
+  razorpayOpened.value = true;
   const options = {
     key: props.orderData.key_id,
     amount: props.orderData.amount,
@@ -164,7 +167,12 @@ const openRazorpay = () => {
     theme: { color: '#0070f3' },
     modal: {
       ondismiss: () => {
-        emit('error', 'Payment was not completed. Please try again.');
+        // ondismiss fires when Razorpay modal closes; only treat as failure
+        // if the user actually opened it (not just our wrapper modal closing)
+        if (razorpayOpened.value) {
+          razorpayOpened.value = false;
+          emit('error', 'Payment was not completed. Please try again.');
+        }
       },
     },
   };

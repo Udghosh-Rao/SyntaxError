@@ -36,8 +36,11 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="event in events" :key="event.event_id" class="table-row">
-                  <td class="td-name">{{ event.title }}</td>
+                <tr v-for="event in events" :key="event.event_id" class="table-row" :class="{ 'table-row--inactive': !event.is_active }">
+                  <td class="td-name">
+                    {{ event.title }}
+                    <span v-if="!event.is_active" class="cancelled-badge">Cancelled</span>
+                  </td>
                   <td class="td-dim">{{ new Date(event.event_date).toLocaleDateString('en-GB') }}</td>
                   <td class="td-dim">{{ event.venue_city }}</td>
                   <td class="td-dim">{{ event.registrations }}</td>
@@ -51,7 +54,16 @@
                   <td>
                     <div class="action-btns">
                       <router-link :to="'/events/' + event.event_id" class="action-btn">View</router-link>
-                      <router-link :to="'/organizer/edit/' + event.event_id" class="action-btn action-btn--edit">Edit</router-link>
+                      <span
+                        v-if="!event.is_active"
+                        class="action-btn action-btn--edit action-btn--disabled"
+                        title="Event has been cancelled"
+                      >Edit</span>
+                      <router-link
+                        v-else
+                        :to="'/organizer/edit/' + event.event_id"
+                        class="action-btn action-btn--edit"
+                      >Edit</router-link>
                     </div>
                   </td>
                 </tr>
@@ -107,7 +119,7 @@ onMounted(async () => {
 .table-row { border-bottom: 1px solid var(--border-subtle); transition: background 0.12s ease; }
 .table-row:last-child { border-bottom: none; }
 .table-row:hover { background: var(--bg-panel-light); }
-[data-theme="light"] .table-row:hover { background: #f8fafc; }
+[data-theme="light"] .table-row:hover { background: #fdf5e6; }
 
 .events-table td { padding: 0.9rem 1.1rem; font-size: 0.88rem; }
 .td-name    { font-weight: 700; color: var(--text-primary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -127,4 +139,28 @@ onMounted(async () => {
 .action-btn { padding: 0.35rem 0.75rem; border-radius: 7px; font-size: 0.78rem; font-weight: 700; text-decoration: none; background: var(--bg-panel-light); color: var(--text-dim); transition: background 0.12s ease; }
 .action-btn:hover { background: var(--border-subtle); }
 .action-btn--edit { color: var(--brand-accent); }
+
+.action-btn--disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+  color: var(--text-muted) !important;
+}
+
+.table-row--inactive td { opacity: 0.55; }
+
+.cancelled-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  vertical-align: middle;
+}
 </style>

@@ -194,9 +194,9 @@ const filteredEvents = computed(() => {
 
 [data-theme="light"] .home-bg-overlay {
   background: linear-gradient(to bottom,
-    rgba(241,245,249,0.97) 0%,
-    rgba(241,245,249,0.95) 50%,
-    rgba(241,245,249,1) 100%);
+    rgba(250,238,221,0.97) 0%,
+    rgba(250,238,221,0.95) 50%,
+    rgba(250,238,221,1) 100%);
 }
 
 /* ── Header ── */

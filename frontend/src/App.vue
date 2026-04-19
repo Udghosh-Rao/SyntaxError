@@ -17,10 +17,7 @@
           stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
           <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path>
         </svg>
-        <span class="tracking-tighter font-black text-2xl"
-          :style="{ color: isDark ? '#ffffff' : '#000000' }">
-          LIVE<span style="color: #00f3ff">SPORTS</span>
-        </span>
+        <span><span class="tracking-tighter font-black text-2xl brand-word-live">LIVE</span><span class="tracking-tighter font-black text-2xl brand-word-sports">SPORTS</span></span>
       </router-link>
 
       <!-- Desktop links -->
@@ -234,7 +231,7 @@
           <div class="footer-zone footer-zone--right">
 
             <!-- Instagram -->
-            <a href="#" aria-label="Instagram" class="social-btn">
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="social-btn">
               <svg width="32" height="32" viewBox="0 0 32 32">
                 <defs>
                   <radialGradient id="ig-bg" cx="25%" cy="110%" r="140%">
@@ -253,7 +250,7 @@
             </a>
 
             <!-- Twitter / X -->
-            <a href="#" aria-label="Twitter / X" class="social-btn">
+            <a href="https://x.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter / X" class="social-btn">
               <svg width="32" height="32" viewBox="0 0 32 32">
                 <rect width="32" height="32" rx="8" fill="#000"/>
                 <path fill="#fff" d="M22.16 8.5h2.99l-6.53 7.46 7.68 10.16h-6.02l-4.26-5.63-4.88 5.63H8.15l6.99-7.98-7.38-9.64h6.17l3.85 5.08zm-1.05 15.83h1.66L11.08 10.22H9.29z"/>
@@ -261,7 +258,7 @@
             </a>
 
             <!-- LinkedIn -->
-            <a href="#" aria-label="LinkedIn" class="social-btn">
+            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" class="social-btn">
               <svg width="32" height="32" viewBox="0 0 32 32">
                 <rect width="32" height="32" rx="8" fill="#0A66C2"/>
                 <path fill="white" d="M10 13h-3v10h3V13zm-1.5-1.4a1.85 1.85 0 1 0 0-3.7 1.85 1.85 0 0 0 0 3.7zm12.5 1.4c-2 0-3.2.9-3.7 1.7V13h-3v10h3v-5.3c0-1.4 1-2.5 2.3-2.5 1.2 0 2.2 1.1 2.2 2.5V23h3v-5.5c0-2.8-1.7-4.5-4-4.5z"/>
@@ -278,15 +275,65 @@
         <div class="footer-bottom">
           <p class="footer-copy">© {{ currentYear }} LiveSports · Beyond Thoughts · All rights reserved.</p>
           <nav class="footer-legal">
-            <a href="#" class="footer-legal-link">About Us</a>
-            <a href="#" class="footer-legal-link">Terms of Service</a>
-            <a href="#" class="footer-legal-link">Privacy Policy</a>
-            <a href="#" class="footer-legal-link">Contact</a>
+            <button class="footer-legal-link" @click="openModal('About Us')">About Us</button>
+            <button class="footer-legal-link" @click="openModal('Terms of Service')">Terms of Service</button>
+            <button class="footer-legal-link" @click="openModal('Privacy Policy')">Privacy Policy</button>
+            <button class="footer-legal-link" @click="openModal('Contact')">Contact</button>
           </nav>
         </div>
 
       </div>
     </footer>
+
+    <!-- Footer modals — Teleported to body to escape footer stacking context -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="activeModal" class="footer-modal-overlay" @click.self="activeModal = null">
+          <div class="footer-modal">
+            <div class="footer-modal-header">
+              <h2 class="footer-modal-title">{{ activeModal }}</h2>
+              <button class="footer-modal-close" @click="activeModal = null" aria-label="Close">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div class="footer-modal-body">
+              <template v-if="activeModal === 'About Us'">
+                <p>Welcome to <strong>LiveSports</strong> — India's premier platform for discovering, registering, and participating in live sports events across the country.</p>
+                <p>Founded with a passion for sport and community, we connect athletes, fans, and organizers in one seamless experience. From grassroots tournaments to large-scale championships, LiveSports is where the action begins.</p>
+                <p>Our mission is simple: make sport accessible to everyone, everywhere in India. Whether you're a seasoned competitor or a first-time participant, there's a place for you here.</p>
+                <p class="footer-modal-placeholder"><em>Full content coming soon. This page is under construction.</em></p>
+              </template>
+              <template v-else-if="activeModal === 'Terms of Service'">
+                <p>By accessing or using the LiveSports platform, you agree to be bound by these Terms of Service. Please read them carefully before registering or participating in any event.</p>
+                <p><strong>1. Eligibility</strong> — You must be at least 18 years of age, or have parental consent, to register on this platform.</p>
+                <p><strong>2. Account Responsibility</strong> — You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account.</p>
+                <p><strong>3. Event Registrations</strong> — All registrations are subject to availability. Refund policies vary by event and are governed by the organizer's terms.</p>
+                <p><strong>4. Prohibited Conduct</strong> — Users may not engage in fraudulent activity, misuse referral codes, or violate any applicable laws.</p>
+                <p class="footer-modal-placeholder"><em>Full terms coming soon. This document is a placeholder.</em></p>
+              </template>
+              <template v-else-if="activeModal === 'Privacy Policy'">
+                <p>LiveSports is committed to protecting your personal information. This Privacy Policy explains how we collect, use, and safeguard your data.</p>
+                <p><strong>Data We Collect</strong> — We collect information you provide directly (name, email, city, sport preferences) and usage data generated through your interactions with the platform.</p>
+                <p><strong>How We Use It</strong> — Your data is used to personalise event recommendations, process registrations and payments, and communicate important updates.</p>
+                <p><strong>Data Sharing</strong> — We do not sell your personal data. We may share it with event organizers and payment processors strictly as needed to fulfill your registration.</p>
+                <p><strong>Your Rights</strong> — You may request access to, correction of, or deletion of your personal data at any time by contacting us.</p>
+                <p class="footer-modal-placeholder"><em>Full policy coming soon. This document is a placeholder.</em></p>
+              </template>
+              <template v-else-if="activeModal === 'Contact'">
+                <p>We'd love to hear from you. Reach out to the LiveSports team through any of the channels below.</p>
+                <p>📧 <strong>Email:</strong> <a href="mailto:hello@livesports.in" class="footer-modal-link">hello@livesports.in</a></p>
+                <p>📞 <strong>Phone:</strong> <a href="tel:+918000000000" class="footer-modal-link">+91 80000 00000</a></p>
+                <p>📍 <strong>Office:</strong> Bengaluru, Karnataka, India</p>
+                <p>🕐 <strong>Support Hours:</strong> Monday – Friday, 10:00 AM – 6:00 PM IST</p>
+                <p class="footer-modal-placeholder"><em>A contact form is coming soon. In the meantime, please email us directly.</em></p>
+              </template>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <ChatbotWidget v-if="authStore.isAuthenticated" />
     <ToastNotification />
@@ -323,6 +370,16 @@ const fetchWalletBalance = async () => {
 
 // Refresh wallet balance whenever the route changes (e.g. after checkout)
 watch(() => route.path, fetchWalletBalance);
+
+// Also refresh instantly when WalletView fires a wallet-updated event (after top-up)
+window.addEventListener('wallet-updated', (e: Event) => {
+  const detail = (e as CustomEvent).detail;
+  if (typeof detail?.balance === 'number') {
+    walletBalance.value = detail.balance;
+  } else {
+    fetchWalletBalance();
+  }
+});
 
 // Close dropdown when clicking outside
 const handleClickOutside = (e: MouseEvent) => {
@@ -374,6 +431,9 @@ onUnmounted(() => {
   ACTIVITY_EVENTS.forEach(e => window.removeEventListener(e, resetTimer));
   document.removeEventListener('click', handleClickOutside);
 });
+
+const activeModal = ref<string | null>(null);
+const openModal = (name: string) => { activeModal.value = name; };
 
 const handleLogout = () => {
   menuOpen.value = false;
@@ -609,6 +669,20 @@ const handleLogout = () => {
 /* ══════════════════════════════════════════
    PROFILE DROPDOWN
 ══════════════════════════════════════════ */
+/* ── Nav brand ── */
+.nav-brand-text   { color: #ffffff; }
+.nav-brand-accent { color: #00f3ff; }
+
+[data-theme="light"] .nav-brand-text   { color: #0284c7; }
+[data-theme="light"] .nav-brand-accent { color: #0284c7; }
+
+/* Navbar brand — !important beats Tailwind text-white cascade from #app */
+.brand-word-live   { color: #ffffff !important; }
+.brand-word-sports { color: #00f3ff !important; }
+
+[data-theme="light"] .brand-word-live   { color: #000000 !important; }
+[data-theme="light"] .brand-word-sports { color: #0284c7 !important; }
+
 .profile-menu-wrap {
   position: relative;
 }
@@ -889,4 +963,111 @@ const handleLogout = () => {
   background: rgba(161, 98, 7, 0.1);
   color: #a16207;
 }
+
+
+/* ── Footer legal buttons ── */
+.footer-legal-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+</style>
+
+<style>
+
+/* ── Footer modal ── */
+.footer-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.footer-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  background: var(--bg-panel-solid);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="light"] .footer-modal {
+  background: #fffaf3;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.15);
+}
+
+.footer-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1.75rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.footer-modal-title {
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+
+.footer-modal-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-panel-light);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.footer-modal-close:hover { background: var(--border-subtle); color: var(--text-primary); }
+
+.footer-modal-body {
+  padding: 1.5rem 1.75rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+
+.footer-modal-placeholder {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 0.25rem;
+}
+
+.footer-modal-link {
+  color: var(--brand-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.footer-modal-link:hover { text-decoration: underline; }
+
+/* ── Modal transition ── */
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 </style>

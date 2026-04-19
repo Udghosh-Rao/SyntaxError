@@ -2,8 +2,19 @@
   <div class="udash-page">
     <div class="container mx-auto px-6 max-w-4xl">
       <div class="page-header">
-        <h1 class="page-title">My Dashboard</h1>
-        <p class="page-sub">Your referral activity and stats.</p>
+        <div class="header-row">
+          <div>
+            <h1 class="page-title">My Dashboard</h1>
+            <p class="page-sub">Your referral activity and stats.</p>
+          </div>
+          <button class="refresh-btn" @click="fetchData" :disabled="loading" :class="{ 'refresh-btn--spinning': loading }">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div v-if="loading" class="state-center"><div class="spinner"></div></div>
@@ -29,8 +40,8 @@
             <span class="stat-value">{{ data.total_referrals ?? 0 }}</span>
           </div>
           <div class="stat-card">
-            <span class="stat-label">Wallet Balance</span>
-            <span class="stat-value stat-value--accent">🪙 ₹{{ walletBalance.toFixed(2) }}</span>
+            <span class="stat-label">Referral Earnings</span>
+            <span class="stat-value stat-value--accent">🎁 ₹{{ referralEarnings.toFixed(2) }}</span>
           </div>
         </div>
 
@@ -58,24 +69,56 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '../services/api';
 
-const loading      = ref(true);
-const data         = ref<any>({});
-const walletBalance = ref(0);
-const copied       = ref(false);
+const loading          = ref(true);
+const data             = ref<any>({});
+const walletBalance    = ref(0);
+const transactions     = ref<any[]>([]);
+const copied           = ref(false);
 
-onMounted(async () => {
+// Net referral earnings: sum all referral_bonus transactions
+// Positive = bonus earned, Negative = bonus clawed back on cancellation
+const referralEarnings = computed(() =>
+  transactions.value
+    .filter(t => t.type === 'referral_bonus')
+    .reduce((sum, t) => sum + t.amount, 0)
+);
+
+const fetchData = async () => {
   loading.value = true;
   try {
     const [refRes, walletRes] = await Promise.all([
       api.get('/auth/my-referrals'),
       api.get('/wallet'),
     ]);
-    data.value         = refRes.data;
+    data.value          = refRes.data;
     walletBalance.value = walletRes.data.wallet?.balance ?? 0;
+    transactions.value  = walletRes.data.transactions ?? [];
+
+    // Notify App.vue navbar to reflect the current wallet balance immediately
+    window.dispatchEvent(new CustomEvent('wallet-updated', {
+      detail: { balance: walletBalance.value }
+    }));
   } finally { loading.value = false; }
+};
+
+// Keep local walletBalance in sync if another page updates the wallet
+const onWalletUpdated = (e: Event) => {
+  const detail = (e as CustomEvent).detail;
+  if (detail?.balance !== undefined) {
+    walletBalance.value = detail.balance;
+  }
+};
+
+onMounted(() => {
+  fetchData();
+  window.addEventListener('wallet-updated', onWalletUpdated);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('wallet-updated', onWalletUpdated);
 });
 
 const copyCode = async () => {
@@ -89,8 +132,35 @@ const copyCode = async () => {
 <style scoped>
 .udash-page { min-height: 100vh; background: var(--bg-site); padding: 7rem 0 4rem; }
 .page-header { margin-bottom: 2rem; }
+.header-row  { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .page-title  { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 900; letter-spacing: -0.04em; color: var(--text-primary); }
 .page-sub    { font-size: 0.88rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.1rem;
+  border: 1.5px solid var(--border-subtle);
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 0.5rem;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.refresh-btn:hover:not(:disabled) {
+  border-color: var(--brand-accent);
+  color: var(--brand-accent);
+  background: color-mix(in srgb, var(--brand-accent) 6%, transparent);
+}
+.refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.refresh-btn--spinning svg { animation: spin 0.7s linear infinite; }
+[data-theme="light"] .refresh-btn { background: #fff; border-color: #cbd5e1; color: #64748b; }
 
 .dash-body { display: flex; flex-direction: column; gap: 1.25rem; }
 
