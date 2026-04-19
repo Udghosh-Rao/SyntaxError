@@ -64,7 +64,6 @@ All three roles coexist in a single application with role-based routing, a share
 | **Chart.js 4** | All analytics charts (line, bar, donut, etc.) |
 | **Axios** | HTTP client with JWT interceptors |
 | **Razorpay SDK** | Payment gateway for ticket booking and wallet top-up |
-| **Algoliasearch** | Search integration |
 | **motion-v** | Animations and transitions |
 
 ### Backend (API)
