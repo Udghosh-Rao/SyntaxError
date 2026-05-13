@@ -107,56 +107,25 @@ NATURAL LANGUAGE MAPPINGS:
 
 SYSTEM_PROMPT = """You are Sparky, an intelligent AI assistant for LiveSports, a sports event management platform in India.
 
-You are a DATABASE AGENT — not a simple chatbot. You can access live data from the platform database.
-
-YOUR CAPABILITIES:
-1. Answer support/FAQ questions from your knowledge
-2. Query the live database using the execute_db_query tool for ANY data question
-3. Perform analytics: counts, totals, averages, rankings, comparisons
-4. Handle follow-up questions using conversation context
+CRITICAL INSTRUCTION: You MUST directly use your tools to perform data queries. NEVER explain how you work, NEVER describe your architecture, and NEVER say you operate in "modes" or use APIs/RAG.
 
 """ + DATABASE_SCHEMA + """
 
 HOW TO USE execute_db_query:
-Pass a JSON query_spec string with these fields:
+Pass the parameters matching the JSON schema you are provided (table, columns, filters, aggregations, etc.).
+IMPORTANT: For date strings, you MUST format them in strict ISO format (e.g. '2026-04-21') so the database parser can read them. Never default to past years unless requested.
 
-{
-  "table": "events",
-  "columns": ["id", "title", "venue_city"],
-  "filters": [{"column": "venue_city", "op": "ilike", "value": "mumbai"}],
-  "joins": [{"table": "registrations", "on": ["events.id", "registrations.event_id"]}],
-  "aggregations": [{"func": "count", "column": "id", "alias": "total"}],
-  "group_by": ["venue_city"],
-  "order_by": [{"column": "total", "dir": "desc"}],
-  "limit": 10
-}
-
-All fields except "table" are optional.
-Filter operators: =, !=, <, >, <=, >=, ilike, like, in, not_in, is_null, is_not_null, between
-Date values: use ISO format (2026-01-15) or relative words (today, yesterday, last_week, last_month, last_year)
-
-CRITICAL RULES:
-1. For ANY question about data (events, users, registrations, revenue, counts) -> ALWAYS use execute_db_query. NEVER guess.
-2. For greetings -> respond warmly, ask how you can help.
-3. For FAQ/support -> answer from your knowledge.
-4. You can call the tool MULTIPLE TIMES in one turn for complex queries.
-5. When user says "my" -> use their user_id from context. If no context, ask them to log in.
-6. Follow-up questions: use conversation history to understand what "it", "those", "them", "only cheap ones" etc. refer to.
-7. If no results -> say "No results found" clearly. Do not invent data.
-8. If query seems invalid -> ask the user to clarify.
+CRITICAL RULES FOR SQL ENGINE:
+1. Do NOT use computed properties (e.g. seats_sold, fill_rate, revenue, seats_remaining) inside filters, joins, aggregations, order_by, or columns arrays! They are NOT real DB columns, querying them directly via SQL will fail. If you need them, query the table to fetch the full rows, and process/sum them in your answer visually.
+2. ALWAYS use 'ilike' instead of '=' to match strings (city, title) case-insensitively.
+3. Call the tool multiple times if you need to fetch multiple datasets.
+4. If asked about "my" events -> filter by user_id from context.
+5. If the user asks general trivia or questions unrelated to sports/LiveSports (e.g., politics, prime minister, movies) -> POLITELY DECLINE to answer.
+6. If a legitimate database query returns zero results -> say "No results found" natively.
 
 RESPONSE FORMAT:
-- Short, clean answers. 2-4 sentences max.
-- No markdown. No bullet points. No asterisks. No headers.
-- Show key numbers clearly: "Total revenue: Rs.12,500" or "5 events found in Mumbai"
-- For lists, use commas or numbered format in plain text.
-- Never expose internal reasoning, tool names, or JSON to the user.
-
-ROLE-BASED ACCESS (enforced by backend, but be aware):
-- Users can only see their own registrations/payments and public events
-- Organizers can see their own events and registrations for those events
-- Admins have full access
-- Anonymous users can only see public active events
+- Very short, clean conversational answers.
+- No markdown. No bullet points.
 """
 
 
@@ -198,6 +167,9 @@ def _resolve_column(col_name, primary_model):
         m = primary_model
         cn = col_name
     attr = getattr(m, cn, None)
+    # Prevent Python @property from breaking SQLAlchemy operate/expression
+    if attr is not None and not hasattr(attr, "expression"):
+        return None
     return attr
 
 
@@ -246,15 +218,21 @@ def _apply_single_filter(query, model, f):
 
     # Auto-parse dates for date columns
     col_name = f.get("column", "").split(".")[-1]
-    if col_name in ("event_date", "created_at") and value is not None:
+    is_date = col_name in ("event_date", "created_at")
+    if is_date and value is not None:
         if isinstance(value, list):
             value = [_parse_date(v) for v in value]
         else:
             value = _parse_date(value)
 
+    def _eq(c, v):
+        if is_date and isinstance(v, datetime):
+            return db.func.date(c) == v.strftime('%Y-%m-%d')
+        return c == v
+
     ops = {
-        "=":           lambda c, v: c == v,
-        "==":          lambda c, v: c == v,
+        "=":           _eq,
+        "==":          _eq,
         "!=":          lambda c, v: c != v,
         "<":           lambda c, v: c < v,
         ">":           lambda c, v: c > v,
@@ -504,19 +482,54 @@ TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query_spec": {
-                        "type": "string",
-                        "description": (
-                            "JSON string with: table (required), columns (optional array), "
-                            "filters (optional array of {column, op, value}), "
-                            "joins (optional array of {table, on: [left_col, right_col]}), "
-                            "aggregations (optional array of {func, column, alias}), "
-                            "group_by (optional array), order_by (optional array of {column, dir}), "
-                            "limit (optional int, max 50)."
-                        ),
+                    "table": {"type": "string", "enum": ["users", "events", "registrations", "payments", "escalation_tickets"]},
+                    "columns": {"type": "array", "items": {"type": "string"}},
+                    "filters": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "column": {"type": "string"},
+                                "op": {"type": "string", "description": "e.g., =, !=, <, >, <=, >=, ilike, like, in, is_null"},
+                                "value": {"description": "Value to filter against"}
+                            }
+                        }
                     },
+                    "joins": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "table": {"type": "string"},
+                                "on": {"type": "array", "items": {"type": "string"}}
+                            }
+                        }
+                    },
+                    "aggregations": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "func": {"type": "string", "enum": ["count", "sum", "avg", "min", "max"]},
+                                "column": {"type": "string"},
+                                "alias": {"type": "string"}
+                            }
+                        }
+                    },
+                    "group_by": {"type": "array", "items": {"type": "string"}},
+                    "order_by": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "column": {"type": "string"},
+                                "dir": {"type": "string", "enum": ["asc", "desc"]}
+                            }
+                        }
+                    },
+                    "limit": {"type": "integer"}
                 },
-                "required": ["query_spec"],
+                "required": ["table"],
             },
         },
     },
@@ -568,7 +581,10 @@ class FAQRetriever:
 
     def retrieve(self, query, k=3):
         if not self._ready:
-            return ""
+            # Fallback for presentation mode when ML dependencies are absent
+            # Securely inject all FAQ knowledge into LLM context window natively
+            return "\n".join(["[{}] {}".format(e["t"], e["a"]) for e in FAQ_ENTRIES])
+            
         vec = self.encoder.encode([query], convert_to_numpy=True, normalize_embeddings=True)
         scores, idxs = self.index.search(vec.astype(self._np.float32), k)
         parts = []
